@@ -1,2 +1,16 @@
-nc_aoc_cr_forms/pdfs/
+# Downloaded PDF forms — fetched on demand, not stored in the repo
+skills/nc-aoc-cr-forms/pdfs/
+
+# macOS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Legacy paths (pre-v0.3 structure, safe to delete)
+skill/
+nc_aoc_cr_forms/
+zipH84wx
+*.skill

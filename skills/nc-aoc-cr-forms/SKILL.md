@@ -1,11 +1,11 @@
 ---
-name: nc_aoc_cr_forms
+name: nc-aoc-cr-forms
 description: >
   Use this skill when the user wants to fill out, find, or work with North Carolina
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 0.1.0
+version: 0.3.0
 ---
 
 # NC AOC Criminal Form Filler
@@ -14,10 +14,34 @@ You help users identify, understand, and fill out North Carolina Administrative 
 
 ## Data sources
 
-- **Fields index**: `{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json`
+All files live in the skill installation directory, co-located with the scripts:
+
+- **Fields index**: `<SKILL_DIR>/fields_index.json`
   — 320 entries, each with `form_number`, `title`, `statute`, `filename`, and a `fields` array
-- **PDFs**: `{{REPO_ROOT}}/nc_aoc_cr_forms/pdfs/`
-- **Fill script**: `{{REPO_ROOT}}/skill/fill_form.py`
+- **Form catalog**: `<SKILL_DIR>/index.json`
+  — full metadata catalog including `pdf_url` for on-demand downloads
+- **PDFs**: `<SKILL_DIR>/pdfs/` (downloaded on demand)
+- **Fill script**: `<SKILL_DIR>/fill_form.py`
+- **Download script**: `<SKILL_DIR>/download_form.py`
+
+---
+
+## Phase 0 — Locate skill directory
+
+Every bash block begins by dynamically locating the skill directory. This works whether the skill was installed via the Claude plugin manager or manually via `setup.py`:
+
+```bash
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
+echo "Skill directory: $SKILL_DIR"
+```
 
 ---
 
@@ -26,9 +50,18 @@ You help users identify, understand, and fill out North Carolina Administrative 
 Read the slim routing index (form_number + title + statute only — do NOT load the full fields array yet):
 
 ```bash
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json') as f:
+with open('$SKILL_DIR/fields_index.json') as f:
     data = json.load(f)
 for d in data:
     print(d['form_number'], '|', d['title'], '|', d['statute'])
@@ -56,22 +89,42 @@ If multiple forms are plausible, ask the user which stage of the process they're
 After identifying the form number, check whether the PDF has been downloaded locally:
 
 ```bash
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
 python3 -c "
 from pathlib import Path
-pdf_dir = Path('{{REPO_ROOT}}/nc_aoc_cr_forms/pdfs')
+pdf_dir = Path('$SKILL_DIR/pdfs')
 matches = list(pdf_dir.glob('AOC-CR-XXX*.pdf'))
 print(matches[0].name if matches else 'NOT_FOUND')
 "
 ```
+
+Replace `AOC-CR-XXX` with the actual form number.
 
 If the result is `NOT_FOUND`:
 
 1. Check whether it exists in the full NC AOC catalog:
 
 ```bash
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_aoc_cr_forms/index.json') as f:
+with open('$SKILL_DIR/index.json') as f:
     data = json.load(f)
 form = next((d for d in data if d.get('form_number','').upper() == 'AOC-CR-XXX'), None)
 print(form['title'] if form else 'NOT_IN_CATALOG')
@@ -84,7 +137,16 @@ print(form['title'] if form else 'NOT_IN_CATALOG')
 3. If the user agrees, download it:
 
 ```bash
-python3 {{REPO_ROOT}}/skill/download_form.py AOC-CR-XXX
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
+python3 "$SKILL_DIR/download_form.py" AOC-CR-XXX
 ```
 
 4. If the form is not in the catalog at all, tell the user it doesn't exist in the NC AOC criminal forms series and ask them to double-check the form number.
@@ -98,9 +160,18 @@ Only proceed to Phase 2 once the PDF is confirmed to exist locally.
 Once the form is identified, read only that form's fields entry:
 
 ```bash
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json') as f:
+with open('$SKILL_DIR/fields_index.json') as f:
     data = json.load(f)
 form = next(d for d in data if d['form_number'] == 'AOC-CR-XXX')
 for field in form['fields']:
@@ -135,7 +206,16 @@ For fields with obvious defaults given context (e.g., StateField = "NC"), propos
 Build a JSON values file and call the fill script:
 
 ```bash
-python3 {{REPO_ROOT}}/skill/fill_form.py \
+SKILL_DIR=$(python3 -c "
+import pathlib as P, sys
+h = P.Path.home()
+for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
+    if not base.exists(): continue
+    for f in base.rglob('fields_index.json'):
+        print(f.parent); sys.exit(0)
+print(h/'.claude/skills/nc-aoc-cr-forms')
+" 2>/dev/null)
+python3 "$SKILL_DIR/fill_form.py" \
   "AOC-CR-XXX" \
   '{"FieldName": "value", "CheckboxField": true, ...}' \
   "/path/to/output_filled.pdf"

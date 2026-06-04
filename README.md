@@ -1,87 +1,105 @@
-# NC AOC Criminal Forms — Claude Code Skill
+# NC AOC Criminal Forms — Claude Plugin
 
-A [Claude Code](https://claude.ai/code) skill for identifying, understanding, and filling out North Carolina Administrative Office of Courts (AOC) criminal forms (AOC-CR series). Includes a library of 321 forms covering the full criminal process from arrest through post-conviction.
+A Claude plugin (and standalone skill) for identifying, understanding, and filling out North Carolina Administrative Office of Courts (AOC) criminal forms — the AOC-CR series, covering the full criminal process from arrest through post-conviction.
+
+**320 forms. Fully indexed. Fill PDFs conversationally.**
 
 ---
 
-## What's included
+## Repository structure
 
 ```
-share/
-├── skill/
-│   ├── SKILL.md        — Claude Code skill definition
-│   ├── fill_form.py    — CLI tool to fill a form PDF with field values
-│   └── setup.py        — one-time path configuration and dependency install script
-└── nc_aoc_cr_forms/
-    ├── index.json          — metadata for every form (number, title, statute, etc.)
-    ├── index.csv           — same metadata as a spreadsheet
-    ├── fields_index.json   — AcroForm field definitions for each PDF
-    └── pdfs/               — 321 downloaded PDF forms
+nc_aoc_cr_forms/
+├── .claude-plugin/
+│   └── marketplace.json        — Claude plugin manifest
+├── skills/
+│   └── nc-aoc-cr-forms/
+│       ├── SKILL.md            — Claude skill definition (dynamic path detection)
+│       ├── fill_form.py        — Fill a form PDF with field values
+│       ├── download_form.py    — Download a form PDF on demand from NC Courts
+│       ├── setup.py            — Manual install helper (copies files + installs deps)
+│       ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
+│       ├── index.json          — Form catalog: number, title, statute, pdf_url
+│       ├── forms.txt           — Forms to pre-download (edit as needed)
+│       └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
+└── README.md
 ```
 
 ---
 
 ## Installation
 
-**Requirements:** [Claude Code](https://claude.ai/code) and Python 3.9+.
+### Option A — Claude plugin (Cowork / Claude Code plugin manager)
 
-### 1. Clone the repo
+Install directly from GitHub in Cowork or Claude Code:
 
-```bash
-git clone <repo-url>
-cd <repo-name>
+```
+https://github.com/Cuffney-Legal-Systems/nc_aoc_cr_forms
 ```
 
-### 2. Configure paths and install dependencies
+The plugin manager installs the skill automatically. No setup script needed.
 
-Run the setup script once. It writes your local clone path into `skill/SKILL.md` and installs the required `pypdf` library:
+### Option B — Manual install (Claude Code CLI)
 
-```bash
-python3 skill/setup.py
-```
-
-### 4. Install the skill in Claude Code
-
-Copy (or symlink) `skill/SKILL.md` into your Claude Code skills directory:
+**Requirements:** Python 3.9+
 
 ```bash
-# Copy
-cp skill/SKILL.md ~/.claude/skills/nc_aoc_cr_forms.md
+# 1. Clone
+git clone https://github.com/Cuffney-Legal-Systems/nc_aoc_cr_forms.git
+cd nc_aoc_cr_forms
 
-# Or symlink (stays in sync if you pull updates)
-ln -s "$(pwd)/skill/SKILL.md" ~/.claude/skills/nc_aoc_cr_forms.md
+# 2. Run setup — installs deps, copies files to ~/.claude/skills/nc-aoc-cr-forms/
+python3 skills/nc-aoc-cr-forms/setup.py
+
+# 3. Register with Claude Code (choose one):
+#    Symlink — recommended, stays current after git pull + re-run setup.py
+ln -sf ~/.claude/skills/nc-aoc-cr-forms/SKILL.md ~/.claude/skills/nc-aoc-cr-forms.md
+#    Or copy:
+cp ~/.claude/skills/nc-aoc-cr-forms/SKILL.md ~/.claude/skills/nc-aoc-cr-forms.md
 ```
 
-> If your Claude Code skills directory is elsewhere, check **Settings → Skills** in the Claude Code app.
+### Keeping the skill current
+
+```bash
+git pull
+python3 skills/nc-aoc-cr-forms/setup.py   # re-copies updated files
+```
 
 ---
 
 ## Using the skill
 
-Once installed, Claude Code will automatically activate the skill when you describe a task involving NC criminal forms. Example prompts:
+Once installed, Claude activates automatically when you describe a task involving NC criminal forms:
 
 - "I need to fill out a warrant for arrest"
 - "Which AOC-CR form do I use for an expunction?"
 - "Help me complete AOC-CR-314 for Wake County"
-- "I need to file a motion to suppress, what form is that?"
+- "I need a bond forfeiture form"
+- "What form covers conditions of probation?"
 
-Claude will walk you through identifying the right form, gathering the required information, and producing a filled PDF.
+Claude identifies the right form, asks for the required information, and produces a filled PDF.
 
 ---
 
-## Filling a form directly from the command line
+## Pre-downloading forms
+
+By default, PDFs are downloaded on demand (the skill prompts you the first time you request a form). To pre-download specific forms, add their numbers to `skills/nc-aoc-cr-forms/forms.txt` (one per line) and re-run `setup.py`.
+
+---
+
+## Command-line usage
 
 ```bash
-# Pass values as a JSON string
-python skill/fill_form.py AOC-CR-314 '{"CountyName": "Wake", "RequestorName": "Jane Doe"}' output.pdf
+# Fill a form — pass values as JSON string or file
+python3 skills/nc-aoc-cr-forms/fill_form.py AOC-CR-314 \
+  '{"CountyName": "Wake", "DefendantName": "Jane Doe"}' \
+  output_filled.pdf
 
-# Or use a JSON file
-python skill/fill_form.py AOC-CR-314 values.json output.pdf
+# Download a single form PDF
+python3 skills/nc-aoc-cr-forms/download_form.py AOC-CR-100
 ```
 
-- Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"` to check.
-- If no output path is given, the filled PDF is saved as `<name>_filled.pdf` in the current directory.
-- To see what fields a form has, search `nc_aoc_cr_forms/fields_index.json` for the form number.
+Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"`.
 
 ---
 
@@ -95,15 +113,4 @@ python skill/fill_form.py AOC-CR-314 values.json output.pdf
 | 400–499 | Probation & supervision |
 | 500–599 | Appeals |
 | 600–699 | Post-conviction: expunctions, motions |
-| 700+   | Specialized: mental health, mediation |
-
----
-
-## Keeping the library current
-
-This repo is periodically updated when NC Courts publishes new or revised forms. To get the latest, pull the repo and re-run setup:
-
-```bash
-git pull
-python3 skill/setup.py
-```
+| 700+ | Specialized: mental health, mediation |
