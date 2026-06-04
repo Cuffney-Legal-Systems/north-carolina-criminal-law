@@ -1,8 +1,8 @@
 """
 download_form.py — Download a single NC AOC criminal form PDF by form number.
 
-Looks up the form in index.json, downloads the PDF to nc_cr_forms/pdfs/,
-and adds the form number to nc_cr_forms/forms.txt.
+Looks up the form in index.json, downloads the PDF to nc_aoc_cr_forms/pdfs/,
+and adds the form number to nc_aoc_cr_forms/forms.txt.
 
 Usage:
     python3 skill/download_form.py AOC-CR-100
@@ -18,9 +18,9 @@ try:
 except ImportError:
     sys.exit("Missing dependency. Run: pip install requests")
 
-INDEX_PATH = Path(__file__).parent.parent / "nc_cr_forms" / "index.json"
-PDF_DIR = Path(__file__).parent.parent / "nc_cr_forms" / "pdfs"
-FORMS_TXT = Path(__file__).parent.parent / "nc_cr_forms" / "forms.txt"
+INDEX_PATH = Path(__file__).parent.parent / "nc_aoc_cr_forms" / "index.json"
+PDF_DIR = Path(__file__).parent.parent / "nc_aoc_cr_forms" / "pdfs"
+FORMS_TXT = Path(__file__).parent.parent / "nc_aoc_cr_forms" / "forms.txt"
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "

@@ -1,6 +1,6 @@
 """
 setup.py — Configure SKILL.md with this repo's absolute path, install dependencies,
-and download any forms listed in nc_cr_forms/forms.txt.
+and download any forms listed in nc_aoc_cr_forms/forms.txt.
 Run once after cloning:  python3 skill/setup.py
 Re-run any time you add forms to forms.txt.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 
 SKILL_MD = Path(__file__).parent / "SKILL.md"
 REPO_ROOT = Path(__file__).parent.parent.resolve()
-FORMS_TXT = REPO_ROOT / "nc_cr_forms" / "forms.txt"
+FORMS_TXT = REPO_ROOT / "nc_aoc_cr_forms" / "forms.txt"
 DOWNLOAD_SCRIPT = Path(__file__).parent / "download_form.py"
 
 

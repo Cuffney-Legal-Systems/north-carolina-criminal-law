@@ -24,8 +24,8 @@ import pypdf
 from pypdf import PdfWriter, PdfReader
 from pypdf.generic import NameObject, BooleanObject
 
-PDF_DIR = Path(__file__).parent.parent / "nc_cr_forms" / "pdfs"
-INDEX_PATH = Path(__file__).parent.parent / "nc_cr_forms" / "fields_index.json"
+PDF_DIR = Path(__file__).parent.parent / "nc_aoc_cr_forms" / "pdfs"
+INDEX_PATH = Path(__file__).parent.parent / "nc_aoc_cr_forms" / "fields_index.json"
 
 
 def resolve_pdf_path(form_ref: str) -> Path:

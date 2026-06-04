@@ -12,7 +12,7 @@ share/
 │   ├── SKILL.md        — Claude Code skill definition
 │   ├── fill_form.py    — CLI tool to fill a form PDF with field values
 │   └── setup.py        — one-time path configuration and dependency install script
-└── nc_cr_forms/
+└── nc_aoc_cr_forms/
     ├── index.json          — metadata for every form (number, title, statute, etc.)
     ├── index.csv           — same metadata as a spreadsheet
     ├── fields_index.json   — AcroForm field definitions for each PDF
@@ -81,7 +81,7 @@ python skill/fill_form.py AOC-CR-314 values.json output.pdf
 
 - Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"` to check.
 - If no output path is given, the filled PDF is saved as `<name>_filled.pdf` in the current directory.
-- To see what fields a form has, search `nc_cr_forms/fields_index.json` for the form number.
+- To see what fields a form has, search `nc_aoc_cr_forms/fields_index.json` for the form number.
 
 ---
 

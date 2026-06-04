@@ -14,9 +14,9 @@ You help users identify, understand, and fill out North Carolina Administrative 
 
 ## Data sources
 
-- **Fields index**: `{{REPO_ROOT}}/nc_cr_forms/fields_index.json`
+- **Fields index**: `{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json`
   — 320 entries, each with `form_number`, `title`, `statute`, `filename`, and a `fields` array
-- **PDFs**: `{{REPO_ROOT}}/nc_cr_forms/pdfs/`
+- **PDFs**: `{{REPO_ROOT}}/nc_aoc_cr_forms/pdfs/`
 - **Fill script**: `{{REPO_ROOT}}/skill/fill_form.py`
 
 ---
@@ -28,7 +28,7 @@ Read the slim routing index (form_number + title + statute only — do NOT load 
 ```bash
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_cr_forms/fields_index.json') as f:
+with open('{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json') as f:
     data = json.load(f)
 for d in data:
     print(d['form_number'], '|', d['title'], '|', d['statute'])
@@ -58,7 +58,7 @@ After identifying the form number, check whether the PDF has been downloaded loc
 ```bash
 python3 -c "
 from pathlib import Path
-pdf_dir = Path('{{REPO_ROOT}}/nc_cr_forms/pdfs')
+pdf_dir = Path('{{REPO_ROOT}}/nc_aoc_cr_forms/pdfs')
 matches = list(pdf_dir.glob('AOC-CR-XXX*.pdf'))
 print(matches[0].name if matches else 'NOT_FOUND')
 "
@@ -71,7 +71,7 @@ If the result is `NOT_FOUND`:
 ```bash
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_cr_forms/index.json') as f:
+with open('{{REPO_ROOT}}/nc_aoc_cr_forms/index.json') as f:
     data = json.load(f)
 form = next((d for d in data if d.get('form_number','').upper() == 'AOC-CR-XXX'), None)
 print(form['title'] if form else 'NOT_IN_CATALOG')
@@ -100,7 +100,7 @@ Once the form is identified, read only that form's fields entry:
 ```bash
 python3 -c "
 import json
-with open('{{REPO_ROOT}}/nc_cr_forms/fields_index.json') as f:
+with open('{{REPO_ROOT}}/nc_aoc_cr_forms/fields_index.json') as f:
     data = json.load(f)
 form = next(d for d in data if d['form_number'] == 'AOC-CR-XXX')
 for field in form['fields']:
