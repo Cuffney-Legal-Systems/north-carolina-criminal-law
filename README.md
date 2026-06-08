@@ -1,6 +1,6 @@
-# nc-criminal-law — Claude Plugin
+# north-carolina-criminal-law — Claude Plugin
 
-A Claude plugin (**nc-criminal-law**) bundling two skills for North Carolina criminal practice:
+A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North Carolina criminal practice:
 
 - **nc-aoc-cr-forms** — identify, understand, and fill North Carolina AOC criminal court forms (AOC-CR series, 320 forms, full process from arrest through post-conviction)
 - **north-carolina-pattern-jury-instructions** — look up, explain, and check work against the NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions pre-built and ready to use)
@@ -10,10 +10,10 @@ A Claude plugin (**nc-criminal-law**) bundling two skills for North Carolina cri
 ## Repository structure
 
 ```
-nc-criminal-law/                 — repo root = the plugin
+north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: nc-criminal-law, v0.6.0)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v0.6.0)
 ├── skills/
 │   ├── nc-aoc-cr-forms/        — AOC-CR form filler
 │   │   ├── SKILL.md            — Claude skill definition
@@ -43,7 +43,7 @@ nc-criminal-law/                 — repo root = the plugin
 Install directly from GitHub in Claude Code:
 
 ```
-https://github.com/Cuffney-Legal-Systems/nc-criminal-law
+https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law
 ```
 
 The plugin manager installs both skills automatically. No setup script needed.
@@ -54,8 +54,8 @@ The plugin manager installs both skills automatically. No setup script needed.
 
 ```bash
 # 1. Clone
-git clone https://github.com/Cuffney-Legal-Systems/nc-criminal-law.git
-cd nc-criminal-law
+git clone https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law.git
+cd north-carolina-criminal-law
 
 # 2. Install the form filler dependency
 pip install -r skills/nc-aoc-cr-forms/requirements.txt
