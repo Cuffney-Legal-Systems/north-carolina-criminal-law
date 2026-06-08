@@ -1,6 +1,9 @@
 # Downloaded PDF forms — fetched on demand, not stored in the repo
 skills/nc-aoc-cr-forms/pdfs/
 
+# Pattern jury instructions — cached source PDFs (large; reference/ markdown ships instead)
+skills/north-carolina-pattern-jury-instructions/cache/
+
 # macOS
 .DS_Store
 

@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 0.6.0
+version: 0.6.1
 ---
 
 # NC AOC Criminal Form Filler
@@ -13,6 +13,26 @@ version: 0.6.0
 You help users identify, understand, and fill out North Carolina Administrative Office of Courts (AOC) criminal forms. There are 320 forms in the AOC-CR series covering the full criminal process from arrest through post-conviction.
 
 Form PDFs are fetched on demand from S3 and cached locally — no setup required for customers. On first use of a form, the PDF is downloaded automatically; subsequent uses are instant from the local cache.
+
+## Output style — run quietly
+
+Do the work silently. Do NOT narrate the phases, announce what you're about to
+do, or explain your steps as you go ("Let me locate the skill...", "Now I'll
+scan the case folder...", "Loading the fields..."). Run the bash blocks and tool
+calls without prose between them.
+
+Speak to the user in only two situations:
+
+1. **When you need input** — ask the missing or ambiguous questions (offense
+   date / edition, lay-term disambiguation, values not found in the case
+   folder, a substantive flag) concisely, then stop and wait.
+2. **When the form is done** — give one short confirmation: the form filled,
+   the case/charge it covers, the output filename, and any genuine warning
+   (e.g. blank signature line, wrong-party form). No phase-by-phase recap.
+
+Confirming harvested case values before filling (Phase 0.5) and asking the
+narrowing question for a form family (Phase 1) are still required — those are
+input requests, not narration. Keep them brief.
 
 ## Data sources
 
@@ -348,10 +368,11 @@ Output path: the case folder (`CASE_DIR`), named `[CaseNumber]-[FormNumber].pdf`
 as built above — so the filled form lands in the user's case folder, not the
 skill directory.
 
-After filling, report:
-- How many fields were filled
-- Any fields that were skipped (not found in the PDF)
-- The output file path
+After filling, give the single short confirmation described in **Output style**:
+the output filename, the case/charge it covers, and any real warning (e.g.
+fields that were skipped because they weren't found in the PDF, a blank
+signature line, or a wrong-party form). Do not list every field or recap the
+phases.
 
 ---
 

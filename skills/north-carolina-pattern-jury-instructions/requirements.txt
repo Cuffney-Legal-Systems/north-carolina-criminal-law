@@ -1,0 +1,3 @@
+# Dependencies for setup_reference.py (PDF text extraction).
+# build_catalog.py needs nothing beyond the Python standard library.
+pdfminer.six>=20221105

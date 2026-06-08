@@ -1,28 +1,36 @@
 # nc-criminal-law — Claude Plugin
 
-A Claude plugin (**nc-criminal-law**) bundling the **nc-aoc-cr-forms** skill for identifying, understanding, and filling out North Carolina Administrative Office of Courts (AOC) criminal forms — the AOC-CR series, covering the full criminal process from arrest through post-conviction.
+A Claude plugin (**nc-criminal-law**) bundling two skills for North Carolina criminal practice:
 
-**320 forms. Fully indexed. Fill PDFs conversationally.**
+- **nc-aoc-cr-forms** — identify, understand, and fill North Carolina AOC criminal court forms (AOC-CR series, 320 forms, full process from arrest through post-conviction)
+- **north-carolina-pattern-jury-instructions** — look up, explain, and check work against the NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions pre-built and ready to use)
 
 ---
 
 ## Repository structure
 
 ```
-nc_aoc_cr_forms/                 — repo root = the plugin (nc-criminal-law)
+nc-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: nc-criminal-law)
+│   └── plugin.json             — Plugin manifest (name: nc-criminal-law, v0.6.0)
 ├── skills/
-│   └── nc-aoc-cr-forms/         — the skill (name: nc-aoc-cr-forms)
-│       ├── SKILL.md            — Claude skill definition (dynamic path detection)
-│       ├── fill_form.py        — Fill a form PDF with field values
-│       ├── download_form.py    — Download a form PDF on demand from NC Courts
-│       ├── setup.py            — Manual install helper (copies files + installs deps)
-│       ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
-│       ├── index.json          — Form catalog: number, title, statute, pdf_url
-│       ├── forms.txt           — Forms to pre-download (edit as needed)
-│       └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
+│   ├── nc-aoc-cr-forms/        — AOC-CR form filler
+│   │   ├── SKILL.md            — Claude skill definition
+│   │   ├── fill_form.py        — Fill a form PDF with field values
+│   │   ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
+│   │   ├── reference.md        — Form disambiguation map
+│   │   └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
+│   └── north-carolina-pattern-jury-instructions/  — NC Pattern Jury Instructions
+│       ├── SKILL.md            — Claude skill definition
+│       ├── catalog.json        — All instructions: number, title, statutes, status
+│       ├── setup_reference.py  — Download + convert PDFs on demand (rarely needed)
+│       ├── requirements.txt    — pdfminer.six (only needed if running setup_reference.py)
+│       └── reference/          — Pre-built instruction text (ships ready-to-use)
+│           ├── index.md        — Full instruction table
+│           ├── by_statute.json — G.S. statute → instruction numbers
+│           ├── by_offense.json — keyword → instruction numbers
+│           └── instructions/   — 1,100+ markdown files, one per instruction
 └── README.md
 ```
 
@@ -68,9 +76,11 @@ python3 skills/nc-aoc-cr-forms/setup.py   # re-copies updated files
 
 ---
 
-## Using the skill
+## Using the skills
 
-Once installed, Claude activates automatically when you describe a task involving NC criminal forms:
+### nc-aoc-cr-forms
+
+Claude activates automatically when you describe a task involving NC criminal forms:
 
 - "I need to fill out a warrant for arrest"
 - "Which AOC-CR form do I use for an expunction?"
@@ -79,6 +89,18 @@ Once installed, Claude activates automatically when you describe a task involvin
 - "What form covers conditions of probation?"
 
 Claude identifies the right form, asks for the required information, and produces a filled PDF.
+
+### north-carolina-pattern-jury-instructions
+
+Claude activates automatically when you ask about NC criminal jury instructions:
+
+- "What are the elements of second-degree murder under N.C.P.I.?"
+- "What's the pattern instruction for felony breaking and entering?"
+- "Which instruction covers G.S. 14-87?"
+- "Review this jury charge against the pattern for robbery with a dangerous weapon"
+- "Is instruction 206.10 still current?"
+
+Claude looks up the instruction, reads the pre-built text, and answers — no download needed for the 1,100+ instructions that ship with the plugin.
 
 ---
 
