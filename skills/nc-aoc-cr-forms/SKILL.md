@@ -42,8 +42,8 @@ input requests, not narration. Keep them brief.
   PDF in the S3 bucket, and each `fields` array is extracted directly from
   that PDF, so its `name` values are the exact internal field names the fill
   script expects.
-- **PDFs**: fetched from `s3://cuffney-legal-systems/NC-criminal-law/` via
-  HTTPS (`NC-criminal-law/nc-aoc-cr-forms/`) and cached in `<SKILL_DIR>/pdfs/` after first download. Requires an
+- **PDFs**: fetched from `s3://cuffney-legal-systems/north-carolina-criminal-law/` via
+  HTTPS (`north-carolina-criminal-law/nc-aoc-cr-forms/`) and cached in `<SKILL_DIR>/pdfs/` after first download. Requires an
   active internet connection on first use of each form; cached PDFs work
   offline thereafter.
 - **Fill script**: `<SKILL_DIR>/fill_form.py`

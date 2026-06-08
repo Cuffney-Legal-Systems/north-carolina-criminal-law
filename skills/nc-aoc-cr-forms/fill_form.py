@@ -32,7 +32,7 @@ import pypdf
 from pypdf import PdfWriter, PdfReader
 
 # PDFs are fetched on demand from S3 and cached here.
-S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/NC-criminal-law/nc-aoc-cr-forms"
+S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/nc-aoc-cr-forms"
 PDF_DIR = Path(__file__).parent / "pdfs"
 INDEX_PATH = Path(__file__).parent / "fields_index.json"
 
