@@ -24,6 +24,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.request
@@ -40,6 +41,8 @@ CATALOG = os.path.join(HERE, "catalog.json")
 CACHE_DIR = os.path.join(HERE, "cache", "pdfs")
 REF_DIR = os.path.join(HERE, "reference")
 INSTR_DIR = os.path.join(REF_DIR, "instructions")
+
+S3_BUCKET = "s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/"
 
 # PDFs use both "G.S. 14-17" (abbreviated) and "N.C. Gen. Stat. 14-17, 14-18" (full,
 # comma-separated list).  We match each prefix once, then extract every statute number
@@ -91,16 +94,29 @@ def slug(number):
     return number.replace(".", "_")
 
 
+def _download_from_s3(s3_key, dest):
+    """Try to fetch a PDF from S3 using the AWS CLI. Returns True on success."""
+    s3_uri = S3_BUCKET + s3_key
+    result = subprocess.run(
+        ["aws", "s3", "cp", s3_uri, dest],
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
 def download(url, dest, refresh=False):
     if os.path.exists(dest) and not refresh:
         return "cached"
     os.makedirs(os.path.dirname(dest), exist_ok=True)
+    s3_key = os.path.basename(dest)
+    if _download_from_s3(s3_key, dest):
+        return "downloaded (s3)"
     req = urllib.request.Request(url, headers={"User-Agent": "nc-pji-reference/1.0"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = resp.read()
     with open(dest, "wb") as f:
         f.write(data)
-    return "downloaded"
+    return "downloaded (http)"
 
 
 def clean_text(raw):

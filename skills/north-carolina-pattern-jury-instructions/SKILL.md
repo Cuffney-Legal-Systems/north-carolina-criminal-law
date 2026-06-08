@@ -1,12 +1,14 @@
 ---
 name: north-carolina-pattern-jury-instructions
 description: >-
-  Look up, explain, and check work against the North Carolina Pattern Jury
-  Instructions for Criminal Cases (N.C.P.I. — Crim.). Use when the user asks
-  about the elements of an NC offense or defense, asks "what's the pattern
-  instruction for [crime]", references an instruction number (e.g. 206.10),
-  asks which instruction covers a statute (e.g. G.S. 14-17), or wants a draft
-  jury charge compared against the pattern. North Carolina criminal only.
+  Look up, explain, analyze facts against, and check work against the North
+  Carolina Pattern Jury Instructions for Criminal Cases (N.C.P.I. — Crim.).
+  Use when the user asks about the elements of an NC offense or defense, asks
+  "what's the pattern instruction for [crime]", presents a set of facts and
+  asks what charges apply or whether the facts support each element, references
+  an instruction number (e.g. 206.10), asks which instruction covers a statute
+  (e.g. G.S. 14-17), or wants a draft jury charge compared against the pattern.
+  North Carolina criminal only.
 ---
 
 # NC Pattern Jury Instructions (Criminal)
@@ -66,9 +68,14 @@ rarely needed. If a file is missing:
    - For everything: `python3 "$SKILL_DIR/setup_reference.py"`
 3. Then read the resulting `$SKILL_DIR/reference/instructions/<number>.md`.
 
-If the machine has no network access, fall back to the catalog metadata — you can
-still identify the right instruction number, statute, and revision year, but not
-quote the operative text.
+**PDF source:** `setup_reference.py` tries the S3 bucket
+`s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/` first
+(via `aws s3 cp`), then falls back to the official SOG HTTP URL if S3 is
+unavailable or the file is not present there.
+
+If the machine has no network access and S3 is also unreachable, fall back to
+the catalog metadata — you can still identify the right instruction number,
+statute, and revision year, but not quote the operative text.
 
 ## Workflow
 
@@ -81,6 +88,9 @@ quote the operative text.
    (running setup if missing) and read the instruction file.
 3. **Answer**, always citing the instruction number and revision year, e.g.
    *"N.C.P.I.—Crim. 206.10 (rev. 2022)."*
+4. **Offer a PDF download** — see the PDF download playbook below. Always do this
+   after completing your answer whenever one or more specific instructions were
+   referenced.
 
 ## Use-case playbooks
 
@@ -95,6 +105,128 @@ quote the operative text.
   Present as "matches / deviates / missing," with the pattern language quoted.
 - **Currency check.** Flag when `status` is `superseded` (never cite as operative —
   point to the replacement) or when `revised` is old relative to known statutory changes.
+- **Analyze facts against an instruction (most common use).** See full playbook below.
+
+### Facts-to-elements analysis playbook
+
+Use this when the user presents a narrative or summary of facts and wants to
+know whether a charge is supported, what charges could apply, or how each
+element maps to the facts.
+
+**Step 1 — Identify candidate charges.**
+Extract the offense(s) that plausibly fit the facts. Use `by_offense.json`
+(keyword search on the fact pattern's key verbs/nouns) and `catalog.json`.
+If multiple instructions plausibly apply (e.g. first-degree vs. second-degree,
+with-weapon vs. without), identify all of them. Include any obvious lesser
+included offenses (e.g. assault if assault with deadly weapon is the main
+charge). State your candidates explicitly before proceeding.
+
+**Step 2 — Load each instruction.**
+Read `$SKILL_DIR/reference/instructions/<number>.md` for each candidate.
+
+**Step 3 — Map facts to elements, element by element.**
+For each numbered element in the instruction:
+
+1. Quote the element verbatim from the pattern (use the exact pattern language).
+2. Identify the specific fact(s) from the user's narrative that speak to that element.
+3. Assign a status:
+   - **Supported** — the stated facts clearly satisfy this element as a matter
+     of sufficiency (a reasonable jury could find it).
+   - **Contested** — facts exist that bear on the element but are ambiguous,
+     incomplete, or subject to an opposing inference.
+   - **Not supported** — no facts in the narrative address this element, or the
+     facts affirmatively negate it.
+   - **Needs information** — the element cannot be assessed without facts the
+     user has not provided; state exactly what is missing.
+4. For bracketed alternatives in the pattern (e.g. `[intentionally] [knowingly]`),
+   note which bracket the facts point toward and why.
+
+**Step 4 — Summarize.**
+After the element-by-element table, provide:
+- **Overall charge viability:** Supported / Marginal / Not supported, with a
+  one-sentence explanation.
+- **Weakest element(s):** identify which element(s) are most likely to fail or
+  be contested at trial.
+- **Lesser included offenses:** note if the facts support a lesser charge even
+  if the main charge is marginal.
+- **Fact gaps:** list any facts, if obtained, that would resolve the uncertain
+  elements (e.g. "Evidence of intent, such as prior statements, would resolve
+  element 3").
+
+**Step 5 — Perspective note.**
+If the user's role is not stated, note that the analysis is neutral (facts as
+given). If the user identifies as defense counsel, frame which elements are
+most vulnerable to challenge and why. If prosecution, frame what additional
+evidence would shore up contested elements.
+
+### PDF download playbook
+
+**When to offer:** After every response that references one or more specific
+instructions by number — including elements lookups, facts analyses, statute
+maps, and charge comparisons. Also offer proactively if the user's message
+explicitly asks for a jury instruction by name or number without requesting any
+analysis (they likely want the document itself).
+
+**How to offer:** At the end of your response, after the substantive answer,
+add a short offer. If one instruction was referenced:
+
+> Would you like me to download the PDF for N.C.P.I.—Crim. 206.10 into your
+> project folder?
+
+If multiple instructions were referenced, list them all:
+
+> Would you like me to download any of these PDFs into your project folder?
+> - N.C.P.I.—Crim. 206.10 — First-Degree Murder
+> - N.C.P.I.—Crim. 206.14 — Second-Degree Murder
+
+**How to download (when the user says yes):**
+
+1. Determine the target directory. Use `$PWD` (the user's current working
+   directory) as the default. If the conversation makes the project folder
+   obvious (e.g. the user mentioned a case folder or a path earlier), use
+   that instead. Confirm the destination with the user if uncertain.
+
+2. Build the filename: `NCPJI_<number_with_underscores>.pdf`
+   e.g. instruction 206.10 → `NCPJI_206_10.pdf`.
+
+3. Try S3 first, then HTTP fallback:
+
+```bash
+NUMBER="206.10"
+SLUG="${NUMBER//./_}"
+DEST="$PWD/NCPJI_${SLUG}.pdf"
+S3_URI="s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/${SLUG}.pdf"
+
+# Try S3
+if aws s3 cp "$S3_URI" "$DEST" 2>/dev/null; then
+    echo "Downloaded from S3: $DEST"
+else
+    # Fall back to SOG HTTP source_url from catalog.json
+    SOURCE_URL=$(python3 -c "
+import json, sys
+catalog = json.load(open('$SKILL_DIR/catalog.json'))
+rec = next((r for r in catalog if r['number'] == '$NUMBER'), None)
+print(rec['source_url'] if rec else '', end='')
+")
+    if [ -z "$SOURCE_URL" ]; then
+        echo "No source URL found for $NUMBER." >&2
+    else
+        curl -fsSL -A "nc-pji-reference/1.0" -o "$DEST" "$SOURCE_URL" \
+            && echo "Downloaded from SOG: $DEST" \
+            || echo "Download failed." >&2
+    fi
+fi
+```
+
+4. After a successful download, confirm the full path to the user:
+
+> Downloaded: `/path/to/project/NCPJI_206_10.pdf`
+
+If the user asked for multiple instructions, loop over each number and run the
+block for each, reporting success or failure per file.
+
+**If download fails:** Report which source(s) were tried and failed, and give
+the user the `source_url` from the catalog so they can fetch it manually.
 
 ## Guardrails
 
@@ -105,5 +237,8 @@ quote the operative text.
 - Always include the revision year — pattern instructions change across annual editions.
 - Do not paraphrase elements as if they were the exact charge; quote the pattern wording
   when precision matters.
-- North Carolina criminal instructions only. If asked about civil or another state, say
-  it's out of scope.
+- In a facts analysis, never state that a charge "will" succeed or fail — only assess
+  whether the stated facts are sufficient to support each element as a matter of
+  sufficiency (reasonable juror standard). Ultimate outcome depends on credibility,
+  additional evidence, and jury deliberation.
+- North Carolina criminal only. If asked about civil or another state, say it's out of scope.

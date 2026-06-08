@@ -16,6 +16,7 @@ Example:
 """
 
 import json
+import logging
 import os
 import ssl
 import sys
@@ -23,12 +24,12 @@ import urllib.request
 import warnings
 from pathlib import Path
 
-# Silence third-party deprecation noise so output stays clean for end users.
+# Silence third-party deprecation noise and pypdf's per-page field warnings.
 warnings.filterwarnings("ignore")
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 import pypdf
 from pypdf import PdfWriter, PdfReader
-from pypdf.generic import NameObject, BooleanObject
 
 # PDFs are fetched on demand from S3 and cached here.
 S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/NC-criminal-law/nc-aoc-cr-forms"

@@ -38,40 +38,39 @@ nc-criminal-law/                 — repo root = the plugin
 
 ## Installation
 
-### Option A — Claude plugin (Cowork / Claude Code plugin manager)
+### Option A — Claude plugin (Claude Code plugin manager)
 
-Install directly from GitHub in Cowork or Claude Code:
+Install directly from GitHub in Claude Code:
 
 ```
-https://github.com/Cuffney-Legal-Systems/nc_aoc_cr_forms
+https://github.com/Cuffney-Legal-Systems/nc-criminal-law
 ```
 
-The plugin manager installs the skill automatically. No setup script needed.
+The plugin manager installs both skills automatically. No setup script needed.
 
 ### Option B — Manual install (Claude Code CLI)
 
-**Requirements:** Python 3.9+
+**Requirements:** Python 3.9+, `pip install pypdf` (for the form filler)
 
 ```bash
 # 1. Clone
-git clone https://github.com/Cuffney-Legal-Systems/nc_aoc_cr_forms.git
-cd nc_aoc_cr_forms
+git clone https://github.com/Cuffney-Legal-Systems/nc-criminal-law.git
+cd nc-criminal-law
 
-# 2. Run setup — installs deps, copies files to ~/.claude/skills/nc-aoc-cr-forms/
-python3 skills/nc-aoc-cr-forms/setup.py
+# 2. Install the form filler dependency
+pip install -r skills/nc-aoc-cr-forms/requirements.txt
 
-# 3. Register with Claude Code (choose one):
-#    Symlink — recommended, stays current after git pull + re-run setup.py
-ln -sf ~/.claude/skills/nc-aoc-cr-forms/SKILL.md ~/.claude/skills/nc-aoc-cr-forms.md
-#    Or copy:
-cp ~/.claude/skills/nc-aoc-cr-forms/SKILL.md ~/.claude/skills/nc-aoc-cr-forms.md
+# 3. Register both skills with Claude Code
+ln -sf "$(pwd)/skills/nc-aoc-cr-forms/SKILL.md" ~/.claude/skills/nc-aoc-cr-forms.md
+ln -sf "$(pwd)/skills/north-carolina-pattern-jury-instructions/SKILL.md" \
+    ~/.claude/skills/north-carolina-pattern-jury-instructions.md
 ```
 
-### Keeping the skill current
+### Keeping the plugin current
 
 ```bash
 git pull
-python3 skills/nc-aoc-cr-forms/setup.py   # re-copies updated files
+# No further steps needed — the symlinks always point to the latest SKILL.md
 ```
 
 ---
@@ -104,12 +103,6 @@ Claude looks up the instruction, reads the pre-built text, and answers — no do
 
 ---
 
-## Pre-downloading forms
-
-By default, PDFs are downloaded on demand (the skill prompts you the first time you request a form). To pre-download specific forms, add their numbers to `skills/nc-aoc-cr-forms/forms.txt` (one per line) and re-run `setup.py`.
-
----
-
 ## Command-line usage
 
 ```bash
@@ -117,9 +110,6 @@ By default, PDFs are downloaded on demand (the skill prompts you the first time 
 python3 skills/nc-aoc-cr-forms/fill_form.py AOC-CR-314 \
   '{"CountyName": "Wake", "DefendantName": "Jane Doe"}' \
   output_filled.pdf
-
-# Download a single form PDF
-python3 skills/nc-aoc-cr-forms/download_form.py AOC-CR-100
 ```
 
 Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"`.
