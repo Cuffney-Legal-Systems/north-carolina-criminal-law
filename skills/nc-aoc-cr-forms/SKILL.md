@@ -5,34 +5,73 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 0.3.0
+version: 0.6.0
 ---
 
 # NC AOC Criminal Form Filler
 
 You help users identify, understand, and fill out North Carolina Administrative Office of Courts (AOC) criminal forms. There are 320 forms in the AOC-CR series covering the full criminal process from arrest through post-conviction.
 
+Form PDFs are fetched on demand from S3 and cached locally — no setup required for customers. On first use of a form, the PDF is downloaded automatically; subsequent uses are instant from the local cache.
+
 ## Data sources
 
-All files live in the skill installation directory, co-located with the scripts:
-
 - **Fields index**: `<SKILL_DIR>/fields_index.json`
-  — 320 entries, each with `form_number`, `title`, `statute`, `filename`, and a `fields` array
-- **Form catalog**: `<SKILL_DIR>/index.json`
-  — full metadata catalog including `pdf_url` for on-demand downloads
-- **PDFs**: `<SKILL_DIR>/pdfs/` (downloaded on demand)
+  — 320 entries, each with `form_number`, `title`, `statute`, `filename`,
+  `effective_date_range`, and a `fields` array. Every `filename` maps to a
+  PDF in the S3 bucket, and each `fields` array is extracted directly from
+  that PDF, so its `name` values are the exact internal field names the fill
+  script expects.
+- **PDFs**: fetched from `s3://cuffney-legal-services/NC-criminal-law/` via
+  HTTPS (`NC-criminal-law/nc-aoc-cr-forms/`) and cached in `<SKILL_DIR>/pdfs/` after first download. Requires an
+  active internet connection on first use of each form; cached PDFs work
+  offline thereafter.
 - **Fill script**: `<SKILL_DIR>/fill_form.py`
-- **Download script**: `<SKILL_DIR>/download_form.py`
+- **Reference / disambiguation map**: `<SKILL_DIR>/reference.md`
+  — maps everyday language ("dismissal", "the bond form", "DWI judgment",
+  "PRL worksheet") to form numbers, and lists every multi-edition / variant
+  **family** with its default edition, the one question that resolves it, and
+  the offense-date cutoffs or variant labels. **Read this whenever the user's
+  request is anything other than an exact form number** (see Phase 1).
+
+> **Many forms have more than one edition — in TWO different ways.**
+>
+> 1. **Same form number, multiple editions.** Nine numbers (311, 338, 343,
+>    601, 602, 607, 608, 620, and the two `AOC-CR-UNKNOWN` entries) ship as
+>    two PDFs under the *same* number, distinguished by `effective_date_range`
+>    and `filename`. `fill_form.py` refuses to guess between these — pass the
+>    **exact filename**.
+> 2. **Letter-suffix families.** Far more common: editions/variants that live
+>    under *different* form numbers via a letter suffix — 307A vs 307B,
+>    310A–F, 342A–C, 603A–F, 619A–F, 627A–F, and many more. The index treats
+>    these as separate forms, so nothing auto-flags the alternation. **You**
+>    must recognize the family (via `reference.md`) and pick or ask.
+>
+> The suffix is overloaded: sometimes it means *pick by offense date* (307A/B),
+> sometimes *pick by offense type* (323A = Impaired Driving vs 323B = Felony
+> Speeding To Elude). `reference.md` Part B tells you which question to ask for
+> each family. Choosing the wrong edition is a substantive error — always
+> confirm the offense date (or variant) before filling a family form.
+>
+> A few forms (e.g. AOC-CR-412, 617, 918M) are flat informational PDFs with no
+> fillable fields; their `fields` array is empty.
 
 ---
 
 ## Phase 0 — Locate skill directory
 
-Every bash block begins by dynamically locating the skill directory. This works whether the skill was installed via the Claude plugin manager or manually via `setup.py`:
+Every bash block begins by dynamically locating the skill directory. This works whether the skill was installed via the Claude plugin manager or copied into a local skills directory:
 
 ```bash
 SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
+import os, pathlib as P, sys
+# Prefer the plugin root when running as an installed plugin
+root = os.environ.get('CLAUDE_PLUGIN_ROOT')
+if root:
+    cand = P.Path(root) / 'skills' / 'nc-aoc-cr-forms'
+    if (cand / 'fields_index.json').exists():
+        print(cand); sys.exit(0)
+# Otherwise search the standard install locations
 h = P.Path.home()
 for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
     if not base.exists(): continue
@@ -43,22 +82,87 @@ print(h/'.claude/skills/nc-aoc-cr-forms')
 echo "Skill directory: $SKILL_DIR"
 ```
 
+Reuse the resolved `$SKILL_DIR` in each later block.
+
+---
+
+## Phase 0.5 — Read the case folder for existing case information
+
+**Assume this skill is being run from inside a case folder.** The current
+working directory (the Cowork project / case folder the user has open) very
+often already contains most of what a form needs — defendant name, file number,
+county, charges, offense dates, DOB, addresses — sitting in prior pleadings,
+intake sheets, discovery, or earlier filled forms. Before asking the user
+anything, **scan the case folder and harvest what's already there.**
+
+Determine the case folder (the working directory) and inventory it:
+
+```bash
+CASE_DIR="$(pwd)"
+echo "Case folder: $CASE_DIR"
+find "$CASE_DIR" -maxdepth 2 -type f \
+  \( -iname '*.pdf' -o -iname '*.docx' -o -iname '*.txt' -o -iname '*.md' \
+     -o -iname '*.json' -o -iname '*.csv' \) \
+  ! -path '*/.*' 2>/dev/null
+```
+
+Then read the most promising files (anything that looks like an intake sheet,
+case caption, prior AOC form, indictment, warrant, or a `case.json` /
+`case-info.*` file) and extract a working set of case facts. Reuse the
+project's `CLAUDE.md` if present — it may state the active client/case. Build an
+internal map of known values, for example:
+
+- **Case number / file number** (e.g. `21CR012345`)
+- **County**
+- **Defendant** name, DOB, race, sex, address
+- **Charge(s)**, statute / G.S. citation, offense date(s)
+- Any official names already on file
+
+**Use these to pre-fill the form.** Anything the user stated in the prompt wins;
+otherwise fall back to what you harvested from the case folder; only ask the
+user for what's still missing or ambiguous.
+
+**Always show the user the values you pulled from the folder and let them
+confirm or correct before filling** — never silently rely on harvested data for
+a court form. Cite which file each value came from so the user can verify.
+
+If the working directory has no usable case files, just proceed normally and
+gather everything from the user in Phase 3.
+
 ---
 
 ## Phase 1 — Identify the right form
 
-Read the slim routing index (form_number + title + statute only — do NOT load the full fields array yet):
+**Step 1a — Did the user give an exact form number?** If they said a specific
+number with no edition ambiguity (e.g. "AOC-CR-100", "fill out a 119"), skip
+straight to Phase 1.5. If they gave a *family* root or anything vague, do Step 1b.
+
+**Step 1b — Translate vague / lay language with `reference.md`.** Users rarely
+say "AOC-CR-307B" — they say "a dismissal", "the bond form", "DWI judgment",
+"PRL worksheet", "an expunction". For any such request, **read `reference.md`
+first**:
 
 ```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
+cat "$SKILL_DIR/reference.md"
+```
+
+Use it to:
+- map the user's words to a form number or **family** (Part A);
+- when the match is a family, apply the **disambiguation rule** (Part B) — pick
+  the default edition only if the user has already given enough context
+  (offense date, or variant), otherwise **ask the one narrowing question** the
+  family calls for (offense date vs. offense type). Do not pick blindly between
+  editions.
+
+`reference.md` is the authoritative router. Only fall back to scanning the full
+index below when the request doesn't match anything there.
+
+**Step 1c — Browse the index** (fallback, or to confirm). Read the slim routing
+index (form_number + title + statute only — do NOT load the full fields array
+yet). The title contains the effective-date range for multi-edition forms, so
+printing it surfaces editions side by side:
+
+```bash
 python3 -c "
 import json
 with open('$SKILL_DIR/fields_index.json') as f:
@@ -84,100 +188,84 @@ If multiple forms are plausible, ask the user which stage of the process they're
 
 ---
 
-## Phase 1.5 — Check local availability
+## Phase 1.5 — Confirm the form exists locally, and pick the right edition
 
-After identifying the form number, check whether the PDF has been downloaded locally:
+After identifying the form number, list every bundled edition of it. This
+matches on the form-number token exactly (so `AOC-CR-60` does not match
+`AOC-CR-601`) and prints each edition's filename and effective-date range:
 
 ```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
 python3 -c "
-from pathlib import Path
-pdf_dir = Path('$SKILL_DIR/pdfs')
-matches = list(pdf_dir.glob('AOC-CR-XXX*.pdf'))
-print(matches[0].name if matches else 'NOT_FOUND')
+import json
+with open('$SKILL_DIR/fields_index.json') as f:
+    data = json.load(f)
+hits = [d for d in data if d['form_number'].upper() == 'AOC-CR-XXX']
+if not hits:
+    print('NOT_IN_LIBRARY')
+for d in hits:
+    print(d['filename'], '||', d.get('effective_date_range','') or '(single edition)')
 "
 ```
 
 Replace `AOC-CR-XXX` with the actual form number.
 
-If the result is `NOT_FOUND`:
+- **No lines / `NOT_IN_LIBRARY`** — that number isn't in the NC AOC criminal
+  forms series; ask the user to double-check it.
+- **Exactly one line** — proceed with that filename.
+- **More than one line** — the form has multiple same-number editions.
+  **Ask the user for the offense date** and choose the edition whose range
+  covers it. Do not proceed until you know which edition applies.
 
-1. Check whether it exists in the full NC AOC catalog:
+**If the form belongs to a letter-suffix family** (307A/B, 310A–F, 619A–F, …),
+the exact-match query above only shows the one suffix you typed — it will *not*
+reveal sibling editions, because they're stored under different form numbers.
+List the whole family by base number so the editions appear side by side:
 
 ```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
 python3 -c "
-import json
-with open('$SKILL_DIR/index.json') as f:
+import json, re
+BASE = 'AOC-CR-310'   # base number, no suffix
+with open('$SKILL_DIR/fields_index.json') as f:
     data = json.load(f)
-form = next((d for d in data if d.get('form_number','').upper() == 'AOC-CR-XXX'), None)
-print(form['title'] if form else 'NOT_IN_CATALOG')
+pat = re.compile('^' + re.escape(BASE) + r'[A-Z]?\$', re.I)
+fam = [d for d in data if pat.match(d['form_number'].strip())]
+for d in sorted(fam, key=lambda x: x['form_number']):
+    print(d['form_number'], '||', d['filename'])
 "
 ```
 
-2. If found in the catalog, tell the user:
-   > "**AOC-CR-XXX** (*title*) isn't in your local form library yet. Would you like to download it now? It will be saved to your forms folder and added to forms.txt for future use."
+Confirm the chosen edition against `reference.md` Part B, then carry its exact
+filename forward.
 
-3. If the user agrees, download it:
-
-```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
-python3 "$SKILL_DIR/download_form.py" AOC-CR-XXX
-```
-
-4. If the form is not in the catalog at all, tell the user it doesn't exist in the NC AOC criminal forms series and ask them to double-check the form number.
-
-Only proceed to Phase 2 once the PDF is confirmed to exist locally.
+Carry the chosen **exact filename** forward — use it (not the bare form
+number) in Phases 2 and 4 for any multi-edition form. Only proceed to Phase 2 once the correct PDF is confirmed in the index (it will be fetched from S3 automatically when `fill_form.py` runs).
 
 ---
 
 ## Phase 2 — Load the form's fields
 
-Once the form is identified, read only that form's fields entry:
+Once the form is identified, read only that form's fields entry. Match on the
+exact `filename` from Phase 1.5 (this is unambiguous even for multi-edition
+forms):
 
 ```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
 python3 -c "
 import json
+FILENAME = 'AOC-CR-XXX-Exact-Title.pdf'   # exact value from Phase 1.5
 with open('$SKILL_DIR/fields_index.json') as f:
     data = json.load(f)
-form = next(d for d in data if d['form_number'] == 'AOC-CR-XXX')
+form = next(d for d in data if d['filename'] == FILENAME)
+if not form['fields']:
+    print('NO_FILLABLE_FIELDS')
 for field in form['fields']:
     print(field['name'], '|', field['type'], '|', field.get('tooltip',''))
 "
 ```
+
+The `name` values printed here are the exact field names the PDF uses — pass
+them through verbatim in Phase 4. If the output is `NO_FILLABLE_FIELDS`, the
+form is a flat informational PDF (e.g. AOC-CR-412, 617, 918M): tell the user it
+has nothing to fill and offer the blank PDF instead.
 
 Group the fields into logical sections to ask the user for information efficiently. Common groupings:
 
@@ -193,7 +281,10 @@ Do not ask for fields that are clearly internal/administrative (signature lines,
 
 ## Phase 3 — Gather values from the user
 
-Ask for missing information conversationally. Batch related fields into a single question.
+**First apply everything harvested in Phase 0.5.** Only ask for information that
+is genuinely missing — not already supplied in the prompt and not found in the
+case folder. Then ask for the remainder conversationally. Batch related fields
+into a single question.
 
 For checkboxes, present them as yes/no questions or multiple-choice where a group of checkboxes represents alternatives (e.g., "Was the offense a: felony / misdemeanor?").
 
@@ -203,25 +294,59 @@ For fields with obvious defaults given context (e.g., StateField = "NC"), propos
 
 ## Phase 4 — Fill and output the PDF
 
-Build a JSON values file and call the fill script:
+**Output location and naming.** Save the completed form into the **case folder**
+(the Cowork project folder the skill is running in — `CASE_DIR` from Phase 0.5),
+**not** alongside the source PDF in the skill directory. Name it using the
+convention:
+
+```
+[CaseNumber]-[FormNumber].pdf
+```
+
+For example `21CR012345-AOC-CR-100.pdf`. Build the output path before filling:
 
 ```bash
-SKILL_DIR=$(python3 -c "
-import pathlib as P, sys
-h = P.Path.home()
-for base in [h/'.claude', h/'Library'/'Application Support'/'Claude']:
-    if not base.exists(): continue
-    for f in base.rglob('fields_index.json'):
-        print(f.parent); sys.exit(0)
-print(h/'.claude/skills/nc-aoc-cr-forms')
-" 2>/dev/null)
+CASE_DIR="$(pwd)"
+CASE_NO="21CR012345"        # from Phase 0.5 / the user; sanitize: keep [A-Za-z0-9-]
+FORM_NO="AOC-CR-100"        # the form number being filled
+# Strip characters that are awkward in filenames
+SAFE_CASE=$(echo "$CASE_NO" | tr -cs 'A-Za-z0-9-' '-' | sed 's/-\+/-/g; s/^-//; s/-$//')
+OUT="$CASE_DIR/${SAFE_CASE}-${FORM_NO}.pdf"
+echo "Output: $OUT"
+```
+
+If no case number is known (none in the prompt and none found in the case
+folder), ask the user for it; only fall back to `NoCaseNumber-[FormNumber].pdf`
+if they don't have one. If a file with that name already exists, append a short
+suffix (e.g. `-v2`) rather than overwriting.
+
+Build a JSON values file and call the fill script, passing `"$OUT"` as the
+output path. The first argument may be a form number **or** an exact filename:
+
+```bash
 python3 "$SKILL_DIR/fill_form.py" \
   "AOC-CR-XXX" \
   '{"FieldName": "value", "CheckboxField": true, ...}' \
-  "/path/to/output_filled.pdf"
+  "$OUT"
 ```
 
-Default output path: same directory as the source PDF, with `_filled` appended to the filename.
+For any **multi-edition form**, pass the exact filename from Phase 1.5 instead
+of the bare form number:
+
+```bash
+python3 "$SKILL_DIR/fill_form.py" \
+  "AOC-CR-601-Judgment-And-Commitment-Active-Punishment-Felony-Structured-Sentencing-For-Offenses-Committed-Before-Dec-1-2025.pdf" \
+  '{...}' \
+  "$OUT"
+```
+
+If you pass a bare form number that has more than one edition, the script will
+**stop and list the editions** rather than guess — go back to Phase 1.5,
+confirm the offense date, and re-run with the exact filename.
+
+Output path: the case folder (`CASE_DIR`), named `[CaseNumber]-[FormNumber].pdf`
+as built above — so the filled form lands in the user's case folder, not the
+skill directory.
 
 After filling, report:
 - How many fields were filled
@@ -232,18 +357,28 @@ After filling, report:
 
 ## Notes on form language
 
-Many forms exist in English and Vietnamese (indicated by Vietnamese titles). English forms are preferred unless the user requests otherwise. The form number is identical — select the file with the English title.
+The bundled library is the **English** AOC-CR forms only. (The NC AOC also
+publishes Vietnamese and other translations of some forms; those are not
+included in this skill.)
 
-## Common field name patterns
+## Field names — always read them from the index
 
-- `CountyName` — NC county
-- `DefendantName`, `DefendantDOB`, `DefendantRace`, `DefendantSex`
-- `OffenseName`, `OffenseDate`, `StatuteViolated`
-- `FileNo`, `CaseNo` — court docket identifiers
+**Do not guess field names.** They are not predictable: the same concept is
+named differently across forms (a county field may be `County` on one form and
+`CountyName` on another; a defendant-name field may be `DefName` or
+`NameDefend`). The authoritative names for a given form are the `name` values
+in its `fields` array, which are extracted straight from the PDF. Always pull
+them in Phase 2 and pass them through verbatim.
+
+Loose conventions that sometimes (not always) hold:
+
 - `*CkBox` suffix — checkbox field
-- `*Field` suffix — text field paired with a nearby checkbox
-- `Judge*`, `Magistrate*`, `ClerkOfCourt*` — official signatures/names
+- `Judge*`, `Magistrate*`, `ClerkOfCourt*` — official names/signatures
+- `FileNo` — file/docket number (common but not universal)
 
 ## Error handling
 
-If `fill_form.py` reports skipped fields, check whether the field name has a variant spelling by searching the fields list directly. Field names in these forms are camelCase and occasionally inconsistent between form versions.
+If `fill_form.py` reports skipped fields, the field name didn't match the PDF.
+Re-print that form's `fields` array (Phase 2) and copy the exact `name` value —
+do not paraphrase it. If the script stops because a form number has multiple
+editions, re-run with the exact filename (see Phase 1.5 / Phase 4).

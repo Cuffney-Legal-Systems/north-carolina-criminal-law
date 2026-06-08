@@ -1,6 +1,6 @@
-# cuffney-nc-criminal-law — Claude Plugin
+# nc-criminal-law — Claude Plugin
 
-A Claude plugin (**cuffney-nc-criminal-law**) bundling the **nc-aoc-cr-forms** skill for identifying, understanding, and filling out North Carolina Administrative Office of Courts (AOC) criminal forms — the AOC-CR series, covering the full criminal process from arrest through post-conviction.
+A Claude plugin (**nc-criminal-law**) bundling the **nc-aoc-cr-forms** skill for identifying, understanding, and filling out North Carolina Administrative Office of Courts (AOC) criminal forms — the AOC-CR series, covering the full criminal process from arrest through post-conviction.
 
 **320 forms. Fully indexed. Fill PDFs conversationally.**
 
@@ -9,10 +9,10 @@ A Claude plugin (**cuffney-nc-criminal-law**) bundling the **nc-aoc-cr-forms** s
 ## Repository structure
 
 ```
-nc_aoc_cr_forms/                 — repo root = the plugin (cuffney-nc-criminal-law)
+nc_aoc_cr_forms/                 — repo root = the plugin (nc-criminal-law)
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: cuffney-nc-criminal-law)
+│   └── plugin.json             — Plugin manifest (name: nc-criminal-law)
 ├── skills/
 │   └── nc-aoc-cr-forms/         — the skill (name: nc-aoc-cr-forms)
 │       ├── SKILL.md            — Claude skill definition (dynamic path detection)

@@ -1,6 +1,0 @@
-# List the AOC-CR form numbers you want available locally.
-# Add one form number per line (e.g. AOC-CR-100).
-# Run python3 skill/setup.py to download any newly added forms.
-# The skill will also offer to download forms on demand when you request one not listed here.
-AOC-CR-100
-AOC-CR-620

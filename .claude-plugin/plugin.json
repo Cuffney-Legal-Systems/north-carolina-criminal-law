@@ -1,6 +1,6 @@
 {
-  "name": "cuffney-nc-criminal-law",
-  "version": "0.3.0",
+  "name": "nc-criminal-law",
+  "version": "0.5.0",
   "description": "Identify, fill out, and download North Carolina AOC criminal court forms (AOC-CR series, 320 forms). Covers the full criminal process: warrants, bail/bond, judgments, probation, appeals, expunctions, and more.",
   "author": {
     "name": "Cuffney Legal Systems"

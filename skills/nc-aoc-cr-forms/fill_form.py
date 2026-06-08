@@ -18,32 +18,93 @@ Example:
 import json
 import os
 import sys
+import urllib.request
+import warnings
 from pathlib import Path
+
+# Silence third-party deprecation noise so output stays clean for end users.
+warnings.filterwarnings("ignore")
 
 import pypdf
 from pypdf import PdfWriter, PdfReader
 from pypdf.generic import NameObject, BooleanObject
 
+# PDFs are fetched on demand from S3 and cached here.
+S3_BASE_URL = "https://cuffney-legal-services.s3.amazonaws.com/NC-criminal-law/nc-aoc-cr-forms"
 PDF_DIR = Path(__file__).parent / "pdfs"
 INDEX_PATH = Path(__file__).parent / "fields_index.json"
 
 
+def _load_index() -> list:
+    """Load fields_index.json (the single source of truth for form metadata)."""
+    with open(INDEX_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def ensure_pdf_cached(filename: str) -> Path:
+    """Return the local path to a PDF, downloading from S3 if not yet cached.
+
+    PDFs are cached in PDF_DIR so subsequent calls are instant. Requires the
+    S3 bucket objects to allow public (unauthenticated) GET access.
+    """
+    local = PDF_DIR / filename
+    if local.exists():
+        return local
+
+    PDF_DIR.mkdir(parents=True, exist_ok=True)
+    url = f"{S3_BASE_URL}/{filename}"
+    tmp = local.with_suffix(".tmp")
+    try:
+        print(f"Downloading {filename} ...", file=sys.stderr)
+        urllib.request.urlretrieve(url, tmp)
+        tmp.rename(local)
+        return local
+    except Exception as exc:
+        if tmp.exists():
+            tmp.unlink()
+        raise FileNotFoundError(
+            f"Could not download '{filename}' from S3.\n"
+            f"  URL: {url}\n"
+            f"  Error: {exc}\n"
+            "Check your internet connection. If the problem persists, contact support."
+        ) from exc
+
+
 def resolve_pdf_path(form_ref: str) -> Path:
-    """Accept form number (AOC-CR-314) or bare filename."""
-    # Direct filename match
-    direct = PDF_DIR / form_ref
-    if direct.exists():
-        return direct
+    """Resolve a form reference to exactly one PDF, fetching from S3 if needed.
 
-    # Search by form number prefix
+    Accepts either an exact bundled filename or a form number (e.g. AOC-CR-601).
+    When a form number maps to more than one edition this refuses to guess and
+    raises, listing the choices so the caller can pass the exact filename.
+    """
+    index = _load_index()
+
+    # 1. Exact filename match against the index (case-insensitive).
+    for entry in index:
+        if entry.get("filename", "").lower() == form_ref.lower():
+            return ensure_pdf_cached(entry["filename"])
+
+    # 2. Exact form-number match against the index (not a loose prefix:
+    #    "AOC-CR-60" must not match "AOC-CR-601").
     form_ref_norm = form_ref.upper().strip()
-    for f in PDF_DIR.glob("*.pdf"):
-        if f.name.upper().startswith(form_ref_norm):
-            return f
-
-    raise FileNotFoundError(
-        f"Could not find PDF for '{form_ref}' in {PDF_DIR}"
+    matches = sorted(
+        {entry["filename"] for entry in index
+         if entry.get("form_number", "").upper().strip() == form_ref_norm}
     )
+
+    if len(matches) == 1:
+        return ensure_pdf_cached(matches[0])
+
+    if len(matches) > 1:
+        listing = "\n".join(f"    - {m}" for m in matches)
+        raise ValueError(
+            f"'{form_ref}' has {len(matches)} editions (usually different "
+            f"effective-date versions). Re-run with the exact filename of "
+            f"the edition you need:\n{listing}"
+        )
+
+    # 3. Fallback: treat form_ref as a literal filename and try to fetch it.
+    return ensure_pdf_cached(form_ref)
 
 
 def normalize_checkbox_value(raw) -> str:
@@ -61,6 +122,21 @@ def fill_pdf(pdf_path: Path, values: dict, output_path: Path) -> None:
     writer.append(reader)
 
     fields = reader.get_fields() or {}
+
+    # Some AOC-CR forms are flat informational PDFs with no AcroForm fields
+    # (e.g. AOC-CR-412, 617, 918M). There is nothing to fill; copy the blank
+    # form to the output path and report rather than crashing.
+    if not fields:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "wb") as f:
+            writer.write(f)
+        print(
+            f"'{pdf_path.name}' has no fillable fields — it is a flat "
+            f"informational form. Copied the blank PDF unchanged."
+        )
+        print(f"Output: {output_path}")
+        return
+
     filled = []
     skipped = []
 
@@ -101,13 +177,30 @@ def fill_pdf(pdf_path: Path, values: dict, output_path: Path) -> None:
 
 
 def get_form_fields(form_ref: str) -> list[dict]:
-    """Return the field metadata list for a form from fields_index.json."""
+    """Return the field metadata list for a form from fields_index.json.
+
+    ``form_ref`` may be an exact filename or a form number. For form numbers
+    with multiple editions this raises rather than guessing, mirroring
+    ``resolve_pdf_path``.
+    """
     with open(INDEX_PATH) as f:
         index = json.load(f)
-    form_ref_norm = form_ref.upper().strip()
+
+    # Exact filename match first.
     for entry in index:
-        if entry["form_number"].upper() == form_ref_norm:
+        if entry.get("filename", "").lower() == form_ref.lower():
             return entry["fields"]
+
+    form_ref_norm = form_ref.upper().strip()
+    matches = [e for e in index if e["form_number"].upper() == form_ref_norm]
+    if len(matches) == 1:
+        return matches[0]["fields"]
+    if len(matches) > 1:
+        listing = "\n".join(f"    - {e['filename']}" for e in matches)
+        raise ValueError(
+            f"'{form_ref}' has {len(matches)} editions; pass the exact "
+            f"filename:\n{listing}"
+        )
     raise KeyError(f"Form '{form_ref}' not found in fields_index.json")
 
 
