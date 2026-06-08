@@ -69,7 +69,7 @@ rarely needed. If a file is missing:
 3. Then read the resulting `$SKILL_DIR/reference/instructions/<number>.md`.
 
 **PDF source:** `setup_reference.py` tries the S3 bucket
-`s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/` first
+`s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/` first
 (via `aws s3 cp`), then falls back to the official SOG HTTP URL if S3 is
 unavailable or the file is not present there.
 
@@ -195,7 +195,7 @@ If multiple instructions were referenced, list them all:
 NUMBER="206.10"
 SLUG="${NUMBER//./_}"
 DEST="$PWD/NCPJI_${SLUG}.pdf"
-S3_URI="s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/${SLUG}.pdf"
+S3_URI="s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/${SLUG}.pdf"
 
 # Try S3
 if aws s3 cp "$S3_URI" "$DEST" 2>/dev/null; then

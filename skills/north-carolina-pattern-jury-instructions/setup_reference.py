@@ -42,7 +42,7 @@ CACHE_DIR = os.path.join(HERE, "cache", "pdfs")
 REF_DIR = os.path.join(HERE, "reference")
 INSTR_DIR = os.path.join(REF_DIR, "instructions")
 
-S3_BUCKET = "s3://cuffney-legal-systems/north-carolina-pattern-jury-instructions/"
+S3_BUCKET = "s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/"
 
 # PDFs use both "G.S. 14-17" (abbreviated) and "N.C. Gen. Stat. 14-17, 14-18" (full,
 # comma-separated list).  We match each prefix once, then extract every statute number
