@@ -17,6 +17,7 @@ Example:
 
 import json
 import os
+import ssl
 import sys
 import urllib.request
 import warnings
@@ -30,7 +31,7 @@ from pypdf import PdfWriter, PdfReader
 from pypdf.generic import NameObject, BooleanObject
 
 # PDFs are fetched on demand from S3 and cached here.
-S3_BASE_URL = "https://cuffney-legal-services.s3.amazonaws.com/NC-criminal-law/nc-aoc-cr-forms"
+S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/NC-criminal-law/nc-aoc-cr-forms"
 PDF_DIR = Path(__file__).parent / "pdfs"
 INDEX_PATH = Path(__file__).parent / "fields_index.json"
 
@@ -56,7 +57,14 @@ def ensure_pdf_cached(filename: str) -> Path:
     tmp = local.with_suffix(".tmp")
     try:
         print(f"Downloading {filename} ...", file=sys.stderr)
-        urllib.request.urlretrieve(url, tmp)
+        try:
+            import certifi
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except ImportError:
+            ctx = ssl.create_default_context()
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+        with opener.open(url) as resp, open(tmp, "wb") as out:
+            out.write(resp.read())
         tmp.rename(local)
         return local
     except Exception as exc:

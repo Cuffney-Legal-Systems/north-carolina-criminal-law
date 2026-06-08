@@ -22,7 +22,7 @@ Form PDFs are fetched on demand from S3 and cached locally — no setup required
   PDF in the S3 bucket, and each `fields` array is extracted directly from
   that PDF, so its `name` values are the exact internal field names the fill
   script expects.
-- **PDFs**: fetched from `s3://cuffney-legal-services/NC-criminal-law/` via
+- **PDFs**: fetched from `s3://cuffney-legal-systems/NC-criminal-law/` via
   HTTPS (`NC-criminal-law/nc-aoc-cr-forms/`) and cached in `<SKILL_DIR>/pdfs/` after first download. Requires an
   active internet connection on first use of each form; cached PDFs work
   offline thereafter.
