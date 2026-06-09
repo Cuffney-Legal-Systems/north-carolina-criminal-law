@@ -41,8 +41,6 @@ CACHE_DIR = os.path.join(HERE, "cache", "pdfs")
 REF_DIR = os.path.join(HERE, "reference")
 INSTR_DIR = os.path.join(REF_DIR, "instructions")
 
-S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/"
-
 # PDFs use both "G.S. 14-17" (abbreviated) and "N.C. Gen. Stat. 14-17, 14-18" (full,
 # comma-separated list).  We match each prefix once, then extract every statute number
 # that follows it (handling comma/semicolon-delimited lists for the full form).
@@ -112,15 +110,8 @@ def download(url, dest, refresh=False):
     if os.path.exists(dest) and not refresh:
         return "cached"
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    s3_key = os.path.basename(dest)
-    s3_url = S3_BASE_URL + s3_key
-    try:
-        _http_get(s3_url, dest)
-        return "downloaded (s3)"
-    except Exception:
-        pass
     _http_get(url, dest)
-    return "downloaded (http)"
+    return "downloaded"
 
 
 def clean_text(raw):
