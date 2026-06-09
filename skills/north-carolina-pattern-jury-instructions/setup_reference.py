@@ -24,7 +24,6 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 import time
 import urllib.request
@@ -42,7 +41,7 @@ CACHE_DIR = os.path.join(HERE, "cache", "pdfs")
 REF_DIR = os.path.join(HERE, "reference")
 INSTR_DIR = os.path.join(REF_DIR, "instructions")
 
-S3_BUCKET = "s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/"
+S3_BASE_URL = "https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/"
 
 # PDFs use both "G.S. 14-17" (abbreviated) and "N.C. Gen. Stat. 14-17, 14-18" (full,
 # comma-separated list).  We match each prefix once, then extract every statute number
@@ -94,14 +93,19 @@ def slug(number):
     return number.replace(".", "_")
 
 
-def _download_from_s3(s3_key, dest):
-    """Try to fetch a PDF from S3 using the AWS CLI. Returns True on success."""
-    s3_uri = S3_BUCKET + s3_key
-    result = subprocess.run(
-        ["aws", "s3", "cp", s3_uri, dest],
-        capture_output=True,
-    )
-    return result.returncode == 0
+_BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
+)
+
+
+def _http_get(url, dest):
+    req = urllib.request.Request(url, headers={"User-Agent": _BROWSER_UA})
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = resp.read()
+    with open(dest, "wb") as f:
+        f.write(data)
 
 
 def download(url, dest, refresh=False):
@@ -109,13 +113,13 @@ def download(url, dest, refresh=False):
         return "cached"
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     s3_key = os.path.basename(dest)
-    if _download_from_s3(s3_key, dest):
+    s3_url = S3_BASE_URL + s3_key
+    try:
+        _http_get(s3_url, dest)
         return "downloaded (s3)"
-    req = urllib.request.Request(url, headers={"User-Agent": "nc-pji-reference/1.0"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        data = resp.read()
-    with open(dest, "wb") as f:
-        f.write(data)
+    except Exception:
+        pass
+    _http_get(url, dest)
     return "downloaded (http)"
 
 

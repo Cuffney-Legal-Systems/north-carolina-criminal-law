@@ -68,10 +68,9 @@ rarely needed. If a file is missing:
    - For everything: `python3 "$SKILL_DIR/setup_reference.py"`
 3. Then read the resulting `$SKILL_DIR/reference/instructions/<number>.md`.
 
-**PDF source:** `setup_reference.py` tries the S3 bucket
-`s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/` first
-(via `aws s3 cp`), then falls back to the official SOG HTTP URL if S3 is
-unavailable or the file is not present there.
+**PDF source:** `setup_reference.py` tries the public S3 HTTPS URL
+(`https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/`)
+first, then falls back to the official SOG HTTP URL. No AWS credentials or CLI required — S3 is accessed as a public HTTPS endpoint.
 
 If the machine has no network access and S3 is also unreachable, fall back to
 the catalog metadata — you can still identify the right instruction number,
@@ -189,16 +188,17 @@ If multiple instructions were referenced, list them all:
 2. Build the filename: `NCPJI_<number_with_underscores>.pdf`
    e.g. instruction 206.10 → `NCPJI_206_10.pdf`.
 
-3. Try S3 first, then HTTP fallback:
+3. Try S3 (public HTTPS) first, then SOG HTTP fallback:
 
 ```bash
 NUMBER="206.10"
 SLUG="${NUMBER//./_}"
 DEST="$PWD/NCPJI_${SLUG}.pdf"
-S3_URI="s3://cuffney-legal-systems/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/${SLUG}.pdf"
+S3_URL="https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/north-carolina-pattern-jury-instructions/${SLUG}.pdf"
+UA="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
-# Try S3
-if aws s3 cp "$S3_URI" "$DEST" 2>/dev/null; then
+# Try S3 (public, no credentials needed)
+if curl -fsSL -A "$UA" -o "$DEST" "$S3_URL" 2>/dev/null; then
     echo "Downloaded from S3: $DEST"
 else
     # Fall back to SOG HTTP source_url from catalog.json
@@ -211,7 +211,7 @@ print(rec['source_url'] if rec else '', end='')
     if [ -z "$SOURCE_URL" ]; then
         echo "No source URL found for $NUMBER." >&2
     else
-        curl -fsSL -A "nc-pji-reference/1.0" -o "$DEST" "$SOURCE_URL" \
+        curl -fsSL -A "$UA" -o "$DEST" "$SOURCE_URL" \
             && echo "Downloaded from SOG: $DEST" \
             || echo "Download failed." >&2
     fi
