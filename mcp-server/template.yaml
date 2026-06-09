@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: NC AOC Criminal Forms MCP Server — fills NC AOC-CR form PDFs via MCP tool
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 512
+    Runtime: python3.13
+    Architectures:
+      - x86_64
+
+Resources:
+  McpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: handler.lambda_handler
+      ReservedConcurrentExecutions: 10
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: RESPONSE_STREAM
+        Cors:
+          AllowOrigins:
+            - "https://claude.ai"
+          AllowMethods:
+            - POST
+            - GET
+          AllowHeaders:
+            - Content-Type
+            - Mcp-Session-Id
+            - Authorization
+          MaxAge: 300
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource: arn:aws:s3:::cuffney-legal-systems/north-carolina-criminal-law/nc-aoc-cr-forms/*
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:*"
+
+Outputs:
+  McpFunctionUrl:
+    Description: MCP Server Function URL — add this to plugin.json mcpServers after first deploy
+    Value: !GetAtt McpFunctionUrl.FunctionUrl

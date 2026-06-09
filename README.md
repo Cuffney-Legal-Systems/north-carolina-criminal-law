@@ -13,11 +13,18 @@ A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North 
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v0.6.0)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v0.7.0)
+├── mcp-server/                 — AWS Lambda MCP server (form fill backend)
+│   ├── handler.py              — Lambda entry point + MCP protocol (Streamable HTTP)
+│   ├── fill_logic.py           — PDF fill logic adapted for Lambda (boto3, in-memory)
+│   ├── fields_index.json       — Bundled copy of AcroForm field definitions
+│   ├── requirements.txt        — mcp, pypdf, certifi
+│   ├── template.yaml           — SAM template (Function URL, IAM, CORS)
+│   └── deploy.sh               — sam build + sam deploy
 ├── skills/
 │   ├── nc-aoc-cr-forms/        — AOC-CR form filler
 │   │   ├── SKILL.md            — Claude skill definition
-│   │   ├── fill_form.py        — Fill a form PDF with field values
+│   │   ├── fill_form.py        — Local fill script (dev/testing)
 │   │   ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
 │   │   ├── reference.md        — Form disambiguation map
 │   │   └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
@@ -50,21 +57,20 @@ The plugin manager installs both skills automatically. No setup script needed.
 
 ### Option B — Manual install (Claude Code CLI)
 
-**Requirements:** Python 3.9+, `pip install pypdf` (for the form filler)
+**Requirements:** Python 3.9+
 
 ```bash
 # 1. Clone
 git clone https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law.git
 cd north-carolina-criminal-law
 
-# 2. Install the form filler dependency
-pip install -r skills/nc-aoc-cr-forms/requirements.txt
-
-# 3. Register both skills with Claude Code
+# 2. Register both skills with Claude Code
 ln -sf "$(pwd)/skills/nc-aoc-cr-forms/SKILL.md" ~/.claude/skills/nc-aoc-cr-forms.md
 ln -sf "$(pwd)/skills/north-carolina-pattern-jury-instructions/SKILL.md" \
     ~/.claude/skills/north-carolina-pattern-jury-instructions.md
 ```
+
+No local PDF or Python dependencies needed for form filling — the fill operation runs in the hosted Lambda backend (see [MCP server](#mcp-server) below).
 
 ### Keeping the plugin current
 
@@ -100,6 +106,24 @@ Claude activates automatically when you ask about NC criminal jury instructions:
 - "Is instruction 206.10 still current?"
 
 Claude looks up the instruction, reads the pre-built text, and answers — no download needed for the 1,100+ instructions that ship with the plugin.
+
+---
+
+## MCP server
+
+Form filling is handled by an AWS Lambda function exposed as an MCP tool (`fill_nc_aoc_form`). This moves the S3 download and PDF manipulation out of the client sandbox, where outbound network requests are blocked.
+
+The Lambda is deployed via AWS SAM. After cloning:
+
+```bash
+cd mcp-server
+./deploy.sh   # first run: sam deploy --guided (prompts for region/stack name)
+              # subsequent runs: sam deploy (uses samconfig.toml)
+```
+
+After the first deploy, copy the `McpFunctionUrl` value from the stack output table and paste it into `.claude-plugin/plugin.json` under `mcpServers.nc-aoc-cr-forms.url`. CoWork uses that URL to auto-configure the MCP connection when the plugin is installed.
+
+**Infrastructure:** Python 3.13, 512 MB, 60 s timeout, Function URL with `RESPONSE_STREAM`, CORS locked to `https://claude.ai`, `s3:GetObject` on the forms prefix only.
 
 ---
 

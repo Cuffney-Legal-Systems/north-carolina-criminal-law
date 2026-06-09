@@ -5,14 +5,14 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 0.6.1
+version: 0.7.0
 ---
 
 # NC AOC Criminal Form Filler
 
 You help users identify, understand, and fill out North Carolina Administrative Office of Courts (AOC) criminal forms. There are 320 forms in the AOC-CR series covering the full criminal process from arrest through post-conviction.
 
-Form PDFs are fetched on demand from S3 and cached locally — no setup required for customers. On first use of a form, the PDF is downloaded automatically; subsequent uses are instant from the local cache.
+Form PDFs are fetched on demand from S3 by the hosted MCP server — no setup required for customers. The fill operation runs entirely in the cloud; no local download or Python dependencies are needed on the client.
 
 ## Output style — run quietly
 
@@ -42,8 +42,8 @@ input requests, not narration. Keep them brief.
   PDF in the S3 bucket, and each `fields` array is extracted directly from
   that PDF, so its `name` values are the exact internal field names the fill
   script expects.
-- **PDFs**: fetched via public HTTPS from `https://cuffney-legal-systems.s3.amazonaws.com/north-carolina-criminal-law/nc-aoc-cr-forms/` and cached in `<SKILL_DIR>/pdfs/` after first download. No AWS credentials or CLI required. Requires an active internet connection on first use of each form; cached PDFs work offline thereafter.
-- **Fill script**: `<SKILL_DIR>/fill_form.py`
+- **PDFs**: fetched from S3 (`cuffney-legal-systems/north-carolina-criminal-law/nc-aoc-cr-forms/`) by the hosted MCP server on every call. No local download, cache, or internet connection required on the client.
+- **Fill tool**: `fill_nc_aoc_form` MCP tool — call it in Phase 4 to fill and retrieve the PDF.
 - **Reference / disambiguation map**: `<SKILL_DIR>/reference.md`
   — maps everyday language ("dismissal", "the bond form", "DWI judgment",
   "PRL worksheet") to form numbers, and lists every multi-edition / variant
@@ -56,7 +56,7 @@ input requests, not narration. Keep them brief.
 > 1. **Same form number, multiple editions.** Nine numbers (311, 338, 343,
 >    601, 602, 607, 608, 620, and the two `AOC-CR-UNKNOWN` entries) ship as
 >    two PDFs under the *same* number, distinguished by `effective_date_range`
->    and `filename`. `fill_form.py` refuses to guess between these — pass the
+>    and `filename`. The `fill_nc_aoc_form` tool refuses to guess between these — pass the
 >    **exact filename**.
 > 2. **Letter-suffix families.** Far more common: editions/variants that live
 >    under *different* form numbers via a letter suffix — 307A vs 307B,
@@ -255,7 +255,7 @@ Confirm the chosen edition against `reference.md` Part B, then carry its exact
 filename forward.
 
 Carry the chosen **exact filename** forward — use it (not the bare form
-number) in Phases 2 and 4 for any multi-edition form. Only proceed to Phase 2 once the correct PDF is confirmed in the index (it will be fetched from S3 automatically when `fill_form.py` runs).
+number) in Phases 2 and 4 for any multi-edition form. Only proceed to Phase 2 once the correct PDF is confirmed in the index (it will be fetched from S3 automatically when the `fill_nc_aoc_form` MCP tool runs).
 
 ---
 
@@ -337,29 +337,23 @@ folder), ask the user for it; only fall back to `NoCaseNumber-[FormNumber].pdf`
 if they don't have one. If a file with that name already exists, append a short
 suffix (e.g. `-v2`) rather than overwriting.
 
-Build a JSON values file and call the fill script, passing `"$OUT"` as the
-output path. The first argument may be a form number **or** an exact filename:
+Call the `fill_nc_aoc_form` MCP tool with the form reference and collected values:
+
+- `form_ref`: for single-edition forms, the form number (e.g. `"AOC-CR-100"`);
+  for multi-edition forms, the **exact filename** from Phase 1.5
+  (e.g. `"AOC-CR-601-Judgment-And-Commitment-Active-Punishment-Felony-Structured-Sentencing-For-Offenses-Committed-Before-Dec-1-2025.pdf"`).
+  Passing a bare form number that has multiple editions returns an error listing
+  the choices — go back to Phase 1.5, confirm the offense date, and re-call
+  with the exact filename.
+- `values`: the `{"FieldName": value, ...}` dict assembled in Phase 3.
+
+On success, the tool returns a JSON string containing `filled_pdf_base64` and
+`filename`. Parse the text result, then decode the base64 and write to `$OUT`:
 
 ```bash
-python3 "$SKILL_DIR/fill_form.py" \
-  "AOC-CR-XXX" \
-  '{"FieldName": "value", "CheckboxField": true, ...}' \
-  "$OUT"
+python3 -c "import base64, sys; open('$OUT','wb').write(base64.b64decode(sys.stdin.read()))" \
+  <<< "<filled_pdf_base64 from tool result>"
 ```
-
-For any **multi-edition form**, pass the exact filename from Phase 1.5 instead
-of the bare form number:
-
-```bash
-python3 "$SKILL_DIR/fill_form.py" \
-  "AOC-CR-601-Judgment-And-Commitment-Active-Punishment-Felony-Structured-Sentencing-For-Offenses-Committed-Before-Dec-1-2025.pdf" \
-  '{...}' \
-  "$OUT"
-```
-
-If you pass a bare form number that has more than one edition, the script will
-**stop and list the editions** rather than guess — go back to Phase 1.5,
-confirm the offense date, and re-run with the exact filename.
 
 Output path: the case folder (`CASE_DIR`), named `[CaseNumber]-[FormNumber].pdf`
 as built above — so the filled form lands in the user's case folder, not the
@@ -396,7 +390,7 @@ Loose conventions that sometimes (not always) hold:
 
 ## Error handling
 
-If `fill_form.py` reports skipped fields, the field name didn't match the PDF.
+If the `fill_nc_aoc_form` tool reports skipped fields, the field name didn't match the PDF.
 Re-print that form's `fields` array (Phase 2) and copy the exact `name` value —
-do not paraphrase it. If the script stops because a form number has multiple
-editions, re-run with the exact filename (see Phase 1.5 / Phase 4).
+do not paraphrase it. If the tool returns an error because a form number has multiple
+editions, re-call with the exact filename (see Phase 1.5 / Phase 4).
