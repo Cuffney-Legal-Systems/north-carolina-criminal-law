@@ -13,14 +13,7 @@ A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North 
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.09.00)
-├── mcp-server/                 — AWS Lambda MCP server (form fill backend)
-│   ├── handler.py              — Lambda entry point + MCP protocol (Streamable HTTP)
-│   ├── fill_logic.py           — PDF fill logic adapted for Lambda (boto3, in-memory)
-│   ├── fields_index.json       — Bundled copy of AcroForm field definitions
-│   ├── requirements.txt        — mcp, pypdf, certifi
-│   ├── template.yaml           — SAM template (Function URL, IAM, CORS)
-│   └── deploy.sh               — sam build + sam deploy
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.10.00)
 ├── skills/
 │   ├── nc-aoc-cr-forms/        — AOC-CR form filler
 │   │   ├── SKILL.md            — Claude skill definition
@@ -113,15 +106,7 @@ Claude looks up the instruction, reads the pre-built text, and answers — no do
 
 Form filling is handled by an AWS Lambda function exposed as an MCP tool (`fill_nc_aoc_form`). This moves the S3 download and PDF manipulation out of the client sandbox, where outbound network requests are blocked.
 
-The Lambda is deployed via AWS SAM. After cloning:
-
-```bash
-cd mcp-server
-./deploy.sh   # first run: sam deploy --guided (prompts for region/stack name)
-              # subsequent runs: sam deploy (uses samconfig.toml)
-```
-
-After the first deploy, copy the `McpFunctionUrl` value from the stack output table and paste it into `.claude-plugin/plugin.json` under `mcpServers.nc-aoc-cr-forms.url`. CoWork uses that URL to auto-configure the MCP connection when the plugin is installed.
+The hosted Lambda URL is configured in `.claude-plugin/plugin.json` and is used automatically when the plugin is installed — no setup required.
 
 **Infrastructure:** Python 3.13, 512 MB, 60 s timeout, Function URL with `RESPONSE_STREAM`, CORS locked to `https://claude.ai`, `s3:GetObject` on the forms prefix only.
 

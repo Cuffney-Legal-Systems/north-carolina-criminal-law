@@ -9,7 +9,7 @@ description: >-
   an instruction number (e.g. 206.10), asks which instruction covers a statute
   (e.g. G.S. 14-17), or wants a draft jury charge compared against the pattern.
   North Carolina criminal only.
-version: 26.06.09.00
+version: 26.06.10.00
 ---
 
 # NC Pattern Jury Instructions (Criminal)

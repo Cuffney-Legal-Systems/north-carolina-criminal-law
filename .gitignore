@@ -1,5 +1,5 @@
-# Developer maintenance scripts — never ship to customers
-maintenance/
+# Developer tooling — never ship to customers
+dev/
 
 # Downloaded PDF forms — fetched on demand, not stored in the repo
 skills/nc-aoc-cr-forms/pdfs/
@@ -15,10 +15,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.tmp
-
-# SAM deployment artifacts — build output and deployment config; never commit
-mcp-server/samconfig.toml
-mcp-server/.aws-sam/
 
 # Claude Code local settings — contains absolute local paths; machine-specific
 .claude/settings.local.json
