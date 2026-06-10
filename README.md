@@ -13,7 +13,11 @@ A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North 
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.10.00)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.10.01)
+├── agents/
+│   ├── case-file-harvester.md  — Scans case folder, returns structured JSON of case facts
+│   ├── offense-elements-analyzer.md — Element-by-element charge analysis (spawned in parallel)
+│   └── nc-form-filler.md       — Fills a single AOC-CR form via MCP (spawned in parallel)
 ├── skills/
 │   ├── nc-aoc-cr-forms/        — AOC-CR form filler
 │   │   ├── SKILL.md            — Claude skill definition

@@ -9,7 +9,7 @@ description: >-
   an instruction number (e.g. 206.10), asks which instruction covers a statute
   (e.g. G.S. 14-17), or wants a draft jury charge compared against the pattern.
   North Carolina criminal only.
-version: 26.06.10.00
+version: 26.06.10.01
 ---
 
 # NC Pattern Jury Instructions (Criminal)
@@ -112,6 +112,22 @@ Use this when the user presents a narrative or summary of facts and wants to
 know whether a charge is supported, what charges could apply, or how each
 element maps to the facts.
 
+**Step 0 — Harvest case context (conditional).**
+If there's evidence of a case folder (a `CLAUDE.md` is present in the working
+directory, or case-related files exist in `pwd`), spawn the `case-file-harvester`
+agent to extract existing defendant and charge context before starting the analysis:
+
+```
+Agent: case-file-harvester
+Prompt:
+CASE_DIR: [current working directory]
+CONTEXT: [defendant name, case number, or any facts the user already stated]
+```
+
+Use harvested charge(s) and defendant information to inform candidate charge
+identification in Step 1. Skip this step if the working directory has no case
+files.
+
 **Step 1 — Identify candidate charges.**
 Extract the offense(s) that plausibly fit the facts. Use `by_offense.json`
 (keyword search on the fact pattern's key verbs/nouns) and `catalog.json`.
@@ -119,6 +135,30 @@ If multiple instructions plausibly apply (e.g. first-degree vs. second-degree,
 with-weapon vs. without), identify all of them. Include any obvious lesser
 included offenses (e.g. assault if assault with deadly weapon is the main
 charge). State your candidates explicitly before proceeding.
+
+**If N > 1 candidate charges — spawn parallel analyzers:**
+
+Spawn one `offense-elements-analyzer` agent per candidate charge, all in parallel:
+
+```
+Agent: offense-elements-analyzer  (spawn N in parallel)
+Each prompt:
+INSTRUCTION_NUMBER: [e.g. 206.10]
+INSTRUCTION_FILE: [absolute path: $SKILL_DIR/reference/instructions/<number>.md]
+FACTS: [full fact pattern from the user]
+USER_ROLE: [prosecution / defense / neutral — infer from context, default neutral]
+```
+
+Note: instruction filenames use underscores for dots — `206.10` →
+`$SKILL_DIR/reference/instructions/206_10.md`.
+
+Collect all agent results and present them as a unified multi-charge report:
+show each charge's element table in sequence, then close with a cross-charge
+comparison (which charge is strongest, which is marginal, any lesser-included
+overlaps between charges). Then skip directly to offering PDF download links.
+Steps 2–4 below apply only to single-charge inline analysis.
+
+**If N = 1 — continue inline:**
 
 **Step 2 — Load each instruction.**
 Read `$SKILL_DIR/reference/instructions/<number>.md` for each candidate.

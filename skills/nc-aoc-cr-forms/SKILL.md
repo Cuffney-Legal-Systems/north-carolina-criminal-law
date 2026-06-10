@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 26.06.10.00
+version: 26.06.10.01
 ---
 
 # NC AOC Criminal Form Filler
@@ -103,48 +103,37 @@ Reuse the resolved `$SKILL_DIR` in each later block.
 
 ---
 
-## Phase 0.5 — Read the case folder for existing case information
+## Phase 0.5 — Harvest case folder facts
 
-**Assume this skill is being run from inside a case folder.** The current
-working directory (the Cowork project / case folder the user has open) very
-often already contains most of what a form needs — defendant name, file number,
-county, charges, offense dates, DOB, addresses — sitting in prior pleadings,
-intake sheets, discovery, or earlier filled forms. Before asking the user
-anything, **scan the case folder and harvest what's already there.**
+**Assume this skill is being run from inside a case folder.** Before asking the
+user anything, spawn the `case-file-harvester` agent to scan the working directory
+for existing documents. The agent reads intake sheets, prior AOC forms, indictments,
+case JSON files, and other case materials, then returns a compact JSON payload —
+keeping raw document text out of this skill's context.
 
-Determine the case folder (the working directory) and inventory it:
+Spawn the agent:
 
-```bash
-CASE_DIR="$(pwd)"
-echo "Case folder: $CASE_DIR"
-find "$CASE_DIR" -maxdepth 2 -type f \
-  \( -iname '*.pdf' -o -iname '*.docx' -o -iname '*.txt' -o -iname '*.md' \
-     -o -iname '*.json' -o -iname '*.csv' \) \
-  ! -path '*/.*' 2>/dev/null
+```
+Agent: case-file-harvester
+Prompt:
+CASE_DIR: [current working directory — get with `pwd`]
+CONTEXT: [any defendant name, case number, or facts the user already stated in their prompt]
 ```
 
-Then read the most promising files (anything that looks like an intake sheet,
-case caption, prior AOC form, indictment, warrant, or a `case.json` /
-`case-info.*` file) and extract a working set of case facts. Reuse the
-project's `CLAUDE.md` if present — it may state the active client/case. Build an
-internal map of known values, for example:
+The agent returns a JSON object with known values and their source files. Parse it
+to build your working set of case facts.
 
-- **Case number / file number** (e.g. `21CR012345`)
-- **County**
-- **Defendant** name, DOB, race, sex, address
-- **Charge(s)**, statute / G.S. citation, offense date(s)
-- Any official names already on file
+**Show the user the harvested values and ask them to confirm or correct before
+filling.** Cite the source file for each value so the user can verify:
 
-**Use these to pre-fill the form.** Anything the user stated in the prompt wins;
-otherwise fall back to what you harvested from the case folder; only ask the
-user for what's still missing or ambiguous.
+> From intake.md: defendant John A. Smith, DOB 1985-04-12, county Mecklenburg,
+> case 24CR012345. Confirm these, or correct anything that's wrong?
 
-**Always show the user the values you pulled from the folder and let them
-confirm or correct before filling** — never silently rely on harvested data for
-a court form. Cite which file each value came from so the user can verify.
+Anything the user stated in the original prompt wins over harvested values. Any
+field in `"unknown"` must be gathered from the user in Phase 3.
 
-If the working directory has no usable case files, just proceed normally and
-gather everything from the user in Phase 3.
+If the agent returns all values null (no usable case files found), proceed
+normally and gather everything from the user in Phase 3.
 
 ---
 
@@ -202,6 +191,60 @@ Use the user's description to match the right form(s). Key form families:
 | 700+   | Specialized: mediation, mental health, etc. |
 
 If multiple forms are plausible, ask the user which stage of the process they're at and which offense type (felony vs misdemeanor, specific charge).
+
+---
+
+## When multiple forms are needed (parallel filling)
+
+Some requests map to a set of related forms that should be filled simultaneously.
+When you detect one of the patterns below in Phase 1, **switch to the parallel
+flow** (Phases 2–4 modified) instead of the single-form flow.
+
+**Known multi-form workflows:**
+
+| Trigger | Forms |
+|---------|-------|
+| "DWI sentencing" / "sentencing for DWI" | 310[A–F] + 311 + 338 (use offense date to resolve 310 edition) |
+| "Plea package" / "plea transcript and judgment" | 300 + appropriate judgment (601–604 by felony/misd level, or 310 for DWI) |
+| "Probation violation" with hearing | 448 + 449 |
+| "Probation violation" waiver | 448 + 450 |
+| User lists 2+ form numbers explicitly | Use exactly those forms |
+
+**Modified flow for multi-form requests:**
+
+**Phase 2 (modified) — Load all fields upfront:**
+Run the Phase 2 index lookup for each form in the set. Build a combined field
+inventory grouped by form.
+
+**Phase 3 (modified) — Consolidated field gathering:**
+Gather all missing values across all forms in a single conversation. Group shared
+fields (defendant name, DOB, case number, county) so the user answers them once.
+Ask form-specific questions grouped by form. Get explicit confirmation before
+proceeding to filling.
+
+**Phase 4 (modified) — Spawn parallel form-filler agents:**
+Once all values are confirmed, spawn one `nc-form-filler` agent per form, all in
+parallel:
+
+```
+Agent: nc-form-filler  (spawn N in parallel)
+Each prompt:
+FORM_REF: [exact filename for multi-edition forms, or bare form number for single-edition]
+VALUES: [complete {"FieldName": value, ...} dict for this form only]
+CASE_DIR: [case folder path from Phase 0.5]
+CASE_NO: [case number]
+FORM_NO: [form number, e.g. AOC-CR-310F]
+```
+
+Collect all results and report together in one confirmation:
+
+> Filled 3 forms:
+> - 24CR012345-AOC-CR-310F.pdf (DWI Judgment Suspending Sentence)
+> - 24CR012345-AOC-CR-311.pdf (Determination of Sentencing Factors)
+> - 24CR012345-AOC-CR-338.pdf (Notice of Grossly Aggravating Factors)
+
+Any agent that returns an `ERROR:` line — report it to the user and offer to
+re-fill that individual form after resolving the issue.
 
 ---
 
