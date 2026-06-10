@@ -13,7 +13,7 @@ A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North 
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v0.7.0)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.09.00)
 ├── mcp-server/                 — AWS Lambda MCP server (form fill backend)
 │   ├── handler.py              — Lambda entry point + MCP protocol (Streamable HTTP)
 │   ├── fill_logic.py           — PDF fill logic adapted for Lambda (boto3, in-memory)

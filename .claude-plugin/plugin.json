@@ -1,10 +1,12 @@
 {
   "name": "north-carolina-criminal-law",
-  "version": "0.7.0",
+  "version": "26.06.09.00",
   "description": "North Carolina criminal law tools: fill AOC-CR court forms (320 forms, full process from arrest through post-conviction) and look up NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions).",
   "author": {
-    "name": "Cuffney Legal Systems"
+    "name": "Cuffney Legal Systems",
+    "url": "https://github.com/Cuffney-Legal-Systems"
   },
+  "repository": "https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law",
   "mcpServers": {
     "nc-aoc-cr-forms": {
       "type": "http",
