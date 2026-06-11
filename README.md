@@ -1,9 +1,10 @@
 # north-carolina-criminal-law — Claude Plugin
 
-A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North Carolina criminal practice:
+A Claude plugin (**north-carolina-criminal-law**) bundling three skills for North Carolina criminal practice:
 
 - **nc-aoc-cr-forms** — identify, understand, and fill North Carolina AOC criminal court forms (AOC-CR series, 320 forms, full process from arrest through post-conviction)
 - **north-carolina-pattern-jury-instructions** — look up, explain, and check work against the NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions pre-built and ready to use)
+- **north-carolina-general-statutes** — read, look up, and explain the full text of every section in G.S. Chapter 14 (Criminal Law), ~978 sections pre-built as markdown files with cross-references to pattern jury instructions
 
 ---
 
@@ -13,7 +14,7 @@ A Claude plugin (**north-carolina-criminal-law**) bundling two skills for North 
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
 │   ├── marketplace.json        — Marketplace catalog (lists the plugin)
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.10.01)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.06.10.02)
 ├── agents/
 │   ├── case-file-harvester.md  — Scans case folder, returns structured JSON of case facts
 │   ├── offense-elements-analyzer.md — Element-by-element charge analysis (spawned in parallel)
@@ -25,16 +26,23 @@ north-carolina-criminal-law/                 — repo root = the plugin
 │   │   ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
 │   │   ├── reference.md        — Form disambiguation map
 │   │   └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
-│   └── north-carolina-pattern-jury-instructions/  — NC Pattern Jury Instructions
+│   ├── north-carolina-pattern-jury-instructions/  — NC Pattern Jury Instructions
+│   │   ├── SKILL.md            — Claude skill definition
+│   │   ├── catalog.json        — All instructions: number, title, statutes, status
+│   │   ├── setup_reference.py  — Download + convert PDFs on demand (rarely needed)
+│   │   ├── requirements.txt    — pdfminer.six (only needed if running setup_reference.py)
+│   │   └── reference/          — Pre-built instruction text (ships ready-to-use)
+│   │       ├── index.md        — Full instruction table
+│   │       ├── by_statute.json — G.S. statute → instruction numbers
+│   │       ├── by_offense.json — keyword → instruction numbers
+│   │       └── instructions/   — 1,100+ markdown files, one per instruction
+│   └── north-carolina-general-statutes/  — G.S. Chapter 14 full text
 │       ├── SKILL.md            — Claude skill definition
-│       ├── catalog.json        — All instructions: number, title, statutes, status
-│       ├── setup_reference.py  — Download + convert PDFs on demand (rarely needed)
-│       ├── requirements.txt    — pdfminer.six (only needed if running setup_reference.py)
-│       └── reference/          — Pre-built instruction text (ships ready-to-use)
-│           ├── index.md        — Full instruction table
-│           ├── by_statute.json — G.S. statute → instruction numbers
-│           ├── by_offense.json — keyword → instruction numbers
-│           └── instructions/   — 1,100+ markdown files, one per instruction
+│       ├── catalog.json        — All ~978 sections: cite, title, article, status
+│       ├── by_article.json     — Article → section numbers
+│       ├── by_keyword.json     — Keyword → section numbers (1,700+ keywords)
+│       ├── index.md            — Full section table
+│       └── statutes/           — ~978 markdown files, one per section (GS-14-{N}.md)
 └── README.md
 ```
 
@@ -61,10 +69,12 @@ The plugin manager installs both skills automatically. No setup script needed.
 git clone https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law.git
 cd north-carolina-criminal-law
 
-# 2. Register both skills with Claude Code
+# 2. Register all three skills with Claude Code
 ln -sf "$(pwd)/skills/nc-aoc-cr-forms/SKILL.md" ~/.claude/skills/nc-aoc-cr-forms.md
 ln -sf "$(pwd)/skills/north-carolina-pattern-jury-instructions/SKILL.md" \
     ~/.claude/skills/north-carolina-pattern-jury-instructions.md
+ln -sf "$(pwd)/skills/north-carolina-general-statutes/SKILL.md" \
+    ~/.claude/skills/north-carolina-general-statutes.md
 ```
 
 No local PDF or Python dependencies needed for form filling — the fill operation runs in the hosted Lambda backend (see [MCP server](#mcp-server) below).
@@ -103,6 +113,18 @@ Claude activates automatically when you ask about NC criminal jury instructions:
 - "Is instruction 206.10 still current?"
 
 Claude looks up the instruction, reads the pre-built text, and answers — no download needed for the 1,100+ instructions that ship with the plugin.
+
+### north-carolina-general-statutes
+
+Claude activates automatically when you ask about specific G.S. Chapter 14 statutes:
+
+- "What does G.S. 14-17 say?"
+- "What statute covers breaking and entering in NC?"
+- "Show me all the homicide statutes in Chapter 14"
+- "Explain G.S. 14-54 in plain language"
+- "Look up G.S. 14-87.1 and show me the pattern jury instruction"
+
+Claude reads the pre-built statutory text and can cross-reference the NC Pattern Jury Instructions when relevant. All ~978 sections of Chapter 14 ship ready to use — no internet required at runtime.
 
 ---
 

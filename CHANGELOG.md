@@ -5,6 +5,16 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.06.10.02] — 2026-06-10
+
+### Added
+
+- **`skills/north-carolina-general-statutes`** — New skill providing full-text access to all sections of G.S. Chapter 14 (Criminal Law). Ships ~978 statute sections as pre-built markdown files (one per section), with no internet required at runtime. Supports lookup by citation (G.S. 14-N), keyword search, article browsing, plain-language explanation, and cross-referencing to N.C.P.I. instructions via the existing `by_statute.json` index. Reserved and renumbered placeholder sections are excluded. Source: ncleg.gov published HTML, scraped via `dev/maintenance/build_chapter14_statutes.py`.
+
+- **`dev/maintenance/build_chapter14_statutes.py`** — Developer build script that scrapes Chapter 14 from ncleg.gov and produces the statute markdown library and all four index files (`catalog.json`, `by_article.json`, `by_keyword.json`, `index.md`). Supports `--execute`, `--resume` (skip already-written files), `--patch-metadata` (fix frontmatter without re-scraping), `--indexes-only`, and `--section N` (single-section test mode). Requires `requests` and `beautifulsoup4`.
+
+---
+
 ## [26.06.10.01] — 2026-06-10
 
 ### Added
