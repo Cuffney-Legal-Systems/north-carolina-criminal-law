@@ -5,6 +5,16 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.07.23.04] — 2026-07-23
+
+### Changed
+
+- **`nc-aoc-cr-forms` skill** — The cloud-session check (`CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS`) is now **Step 0**, run before any tool lookup, with a hard stop: in a cloud session the skill must deliver the "re-run in a local session" message immediately, without probing S3, websites, or searching for the tool. (A v...03 cloud run correctly diagnosed the environment but first spent commands trying to fetch the blank form — only the sandbox's egress block stopped it.)
+
+- **`nc-aoc-cr-forms` skill** — The no-fallback rule is now source- and method-agnostic: no fetching the blank PDF from ANY source (S3, nccourts.gov, anywhere), no inspecting field layouts for a manual fill, no filling/overlaying/reconstructing by any means. The blank form being publicly available does not make a hand-fill acceptable — the ONLY fill path is the `fill_nc_aoc_form` MCP tool.
+
+---
+
 ## [26.07.23.03] — 2026-07-23
 
 ### Changed

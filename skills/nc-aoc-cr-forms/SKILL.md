@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 26.07.23.03
+version: 26.07.23.04
 ---
 
 # NC AOC Criminal Form Filler
@@ -16,11 +16,29 @@ Form PDFs are fetched on demand from S3 by the hosted MCP server — no setup re
 
 ## If the fill tool is not connected — stop, do not improvise
 
-The `fill_nc_aoc_form` MCP tool (server `nc-aoc-cr-forms`) is the ONLY way this
-skill fills a form. Before starting Phase 0, confirm the tool is available —
-but note that in many harnesses MCP tools are **deferred**: the tool can be
-connected yet absent from your loaded tool list until you fetch its schema.
-So the check is:
+The `fill_nc_aoc_form` MCP tool (server `nc-aoc-cr-forms`) is the ONLY way
+this skill fills a form — there is no approved way to produce a filled form
+without it. Before starting Phase 0, confirm it is available.
+
+**Step 0 — cloud-session check. Run this before anything else:**
+
+```bash
+echo "${CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS:-unset}"
+```
+
+If it prints `1`, this is a cloud/remote sandbox session: the platform
+disables plugin MCP servers there, so the fill tool cannot exist in this
+session no matter what you try, and toggling or reinstalling the plugin will
+NOT fix it. STOP IMMEDIATELY — do not run any other command, do not probe S3
+or any website, do not search for the tool. Tell the user:
+
+> Form filling isn't available in cloud (remote) sessions — the platform
+> disables plugin MCP servers in the remote sandbox. Re-run this request in
+> a local session on your machine and the fill will work.
+
+If it prints anything else, continue — but note that in many harnesses MCP
+tools are **deferred**: the tool can be connected yet absent from your loaded
+tool list until you fetch its schema. So the check is:
 
 1. Look for a tool whose name contains `fill_nc_aoc_form` among your loaded
    tools (the full name is often prefixed, e.g.
@@ -28,35 +46,33 @@ So the check is:
 2. If not loaded and a `ToolSearch` tool exists, search for `fill_nc_aoc_form`
    (keyword query). ToolSearch waits for still-connecting servers, so this also
    covers the server finishing its handshake after session start.
-3. Only if both steps come up empty is the fill tool actually unavailable.
+3. Only if both steps come up empty is the server actually disconnected.
+   STOP and tell the user:
 
-Never report the tool as unavailable without doing step 2. If both steps come
-up empty, determine WHY before telling the user — run:
+   > The nc-aoc-cr-forms form-filling server isn't connected in this session.
+   > Toggle the north-carolina-criminal-law plugin off and on (or restart the
+   > app), then start a fresh session and try again.
 
-```bash
-echo "${CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS:-unset}"
-```
+Never report the tool as unavailable without doing step 2.
 
-- If it prints `1`, this is a cloud/remote sandbox session: the platform
-  disables plugin MCP servers there (and blocks outbound network), so
-  toggling or reinstalling the plugin will NOT fix it. STOP and tell the user:
+### No fallbacks — by any method, from any source
 
-  > Form filling isn't available in cloud (remote) sessions — the platform
-  > disables plugin MCP servers in the remote sandbox. Re-run this request in
-  > a local session on your machine and the fill will work.
+When the fill tool is unavailable (either reason above), do NOT improvise a
+fill. Specifically:
 
-- Otherwise the server is genuinely disconnected. STOP and tell the user:
+- Do NOT download or fetch the blank form PDF from ANY source — not S3, not
+  nccourts.gov, not anywhere else. The blank form being publicly available
+  does not make a hand-fill acceptable.
+- Do NOT inspect a PDF's field layout in preparation for a manual fill.
+- Do NOT fill, overlay, or reconstruct the form by any other means — no local
+  fill scripts, no pip installs, no HTML or Word look-alikes.
 
-  > The nc-aoc-cr-forms form-filling server isn't connected in this session.
-  > Toggle the north-carolina-criminal-law plugin off and on (or restart the
-  > app), then start a fresh session and try again.
-
-Do NOT attempt any fallback: no downloading PDFs from S3, no local fill
-scripts, no pip installs, no reconstructing the form by other means. Sandboxed
-sessions block outbound network access, and a hand-built substitute for a
-court form is worse than no form. You may still do the non-fill parts of the
-skill (identify the right form, explain it, list its fields) — just say
-clearly that filling requires the reconnected tool.
+The ONLY way this skill produces a filled form is the `fill_nc_aoc_form` MCP
+tool; a hand-built substitute for a court form is worse than no form. You may
+still do the non-fill parts of the skill (identify the right form, explain
+it, list its fields, map the user's values to exact field names so the fill
+is ready to run) — just say clearly what the fill itself requires: a local
+session if Step 0 tripped, or the reconnected tool otherwise.
 
 ## Output style — run quietly
 
