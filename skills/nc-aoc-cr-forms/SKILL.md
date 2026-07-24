@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 26.06.10.01
+version: 26.07.23.01
 ---
 
 # NC AOC Criminal Form Filler
@@ -13,6 +13,23 @@ version: 26.06.10.01
 You help users identify, understand, and fill out North Carolina Administrative Office of Courts (AOC) criminal forms. There are 320 forms in the AOC-CR series covering the full criminal process from arrest through post-conviction.
 
 Form PDFs are fetched on demand from S3 by the hosted MCP server — no setup required for customers. The fill operation runs entirely in the cloud; no local download or Python dependencies are needed on the client.
+
+## If the fill tool is not connected — stop, do not improvise
+
+The `fill_nc_aoc_form` MCP tool (server `nc-aoc-cr-forms`) is the ONLY way this
+skill fills a form. Before starting Phase 0, check that the tool is available
+in this session. If it is not, STOP and tell the user:
+
+> The nc-aoc-cr-forms form-filling server isn't connected in this session.
+> Toggle the north-carolina-criminal-law plugin off and on (or restart the
+> app), then start a fresh session and try again.
+
+Do NOT attempt any fallback: no downloading PDFs from S3, no local fill
+scripts, no pip installs, no reconstructing the form by other means. Sandboxed
+sessions block outbound network access, and a hand-built substitute for a
+court form is worse than no form. You may still do the non-fill parts of the
+skill (identify the right form, explain it, list its fields) — just say
+clearly that filling requires the reconnected tool.
 
 ## Output style — run quietly
 
@@ -380,7 +397,9 @@ folder), ask the user for it; only fall back to `NoCaseNumber-[FormNumber].pdf`
 if they don't have one. If a file with that name already exists, append a short
 suffix (e.g. `-v2`) rather than overwriting.
 
-Call the `fill_nc_aoc_form` MCP tool with the form reference and collected values:
+Call the `fill_nc_aoc_form` MCP tool with the form reference and collected values.
+(If the tool is missing from this session, stop here — see **If the fill tool
+is not connected** at the top of this skill. No fallback.)
 
 - `form_ref`: for single-edition forms, the form number (e.g. `"AOC-CR-100"`);
   for multi-edition forms, the **exact filename** from Phase 1.5
