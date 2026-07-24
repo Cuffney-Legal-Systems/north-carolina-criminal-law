@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 26.07.23.02
+version: 26.07.23.03
 ---
 
 # NC AOC Criminal Form Filler
@@ -28,14 +28,28 @@ So the check is:
 2. If not loaded and a `ToolSearch` tool exists, search for `fill_nc_aoc_form`
    (keyword query). ToolSearch waits for still-connecting servers, so this also
    covers the server finishing its handshake after session start.
-3. Only if both steps come up empty is the server actually disconnected.
+3. Only if both steps come up empty is the fill tool actually unavailable.
 
-Never report the tool as unavailable without doing step 2. If it is truly
-disconnected, STOP and tell the user:
+Never report the tool as unavailable without doing step 2. If both steps come
+up empty, determine WHY before telling the user — run:
 
-> The nc-aoc-cr-forms form-filling server isn't connected in this session.
-> Toggle the north-carolina-criminal-law plugin off and on (or restart the
-> app), then start a fresh session and try again.
+```bash
+echo "${CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS:-unset}"
+```
+
+- If it prints `1`, this is a cloud/remote sandbox session: the platform
+  disables plugin MCP servers there (and blocks outbound network), so
+  toggling or reinstalling the plugin will NOT fix it. STOP and tell the user:
+
+  > Form filling isn't available in cloud (remote) sessions — the platform
+  > disables plugin MCP servers in the remote sandbox. Re-run this request in
+  > a local session on your machine and the fill will work.
+
+- Otherwise the server is genuinely disconnected. STOP and tell the user:
+
+  > The nc-aoc-cr-forms form-filling server isn't connected in this session.
+  > Toggle the north-carolina-criminal-law plugin off and on (or restart the
+  > app), then start a fresh session and try again.
 
 Do NOT attempt any fallback: no downloading PDFs from S3, no local fill
 scripts, no pip installs, no reconstructing the form by other means. Sandboxed

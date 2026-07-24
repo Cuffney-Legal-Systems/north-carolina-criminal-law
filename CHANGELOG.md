@@ -5,6 +5,38 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.07.23.03] — 2026-07-23
+
+### Changed
+
+- **`nc-aoc-cr-forms` skill** — The connection check now distinguishes *why* the `fill_nc_aoc_form` tool is unavailable. If `CLAUDE_CODE_SKIP_PLUGIN_MCP_SERVERS=1` is set, the session is a cloud/remote sandbox where the platform disables plugin MCP servers (and blocks outbound network) — the skill now tells the user to re-run in a local session instead of the (useless there) plugin toggle advice. Genuine disconnections keep the toggle-and-retry message.
+
+### Fixed
+
+- **`agents/nc-form-filler`** — The agent's tool allowlist only named `mcp__nc-aoc-cr-forms__fill_nc_aoc_form`, but when installed as a plugin the tool is prefixed (`mcp__plugin_north-carolina-criminal-law_nc-aoc-cr-forms__fill_nc_aoc_form`), so the subagent could never call the fill tool. Both names are now allowlisted, plus `ToolSearch` for harnesses that defer MCP tool schemas; the agent body explains which name to use.
+
+---
+
+## [26.07.23.02] — 2026-07-23
+
+### Fixed
+
+- **`nc-aoc-cr-forms` skill** — The v26.07.23.01 availability check produced false "server isn't connected" errors in harnesses where MCP tools are **deferred** (connected but absent from the loaded tool list until a `ToolSearch` call fetches the schema). The check is now: look for `fill_nc_aoc_form` among loaded tools (name may be prefixed) → if absent, `ToolSearch` for it (this also waits out a still-connecting server) → only if both come up empty is the server considered down.
+
+---
+
+## [26.07.23.01] — 2026-07-23
+
+### Changed
+
+- **`nc-aoc-cr-forms` skill** — If the `fill_nc_aoc_form` MCP tool is unavailable, the skill now stops and tells the user to reconnect the plugin — no fallbacks (no S3 downloads, no local fill scripts, no hand-built forms). Sandboxed sessions block outbound network, and a hand-rolled court form is worse than none.
+
+### Removed
+
+- Dev leftovers from the shipped `nc-aoc-cr-forms` skill: `fill_form.py` and `requirements.txt` moved to gitignored `dev/local-fill/`; deleted `__pycache__/`, `pdfs/`, and `.DS_Store`.
+
+---
+
 ## [26.06.10.02] — 2026-06-10
 
 ### Added

@@ -26,7 +26,7 @@ description: >
 
 model: inherit
 color: green
-tools: ["Bash", "mcp__nc-aoc-cr-forms__fill_nc_aoc_form"]
+tools: ["Bash", "ToolSearch", "mcp__nc-aoc-cr-forms__fill_nc_aoc_form", "mcp__plugin_north-carolina-criminal-law_nc-aoc-cr-forms__fill_nc_aoc_form"]
 ---
 
 You fill a single NC AOC-CR form using the MCP server and write the output PDF to the case folder. You run silently — no narration, no questions.
@@ -45,6 +45,12 @@ You fill a single NC AOC-CR form using the MCP server and write the output PDF t
 Call `fill_nc_aoc_form` with:
 - `form_ref`: the exact value of `FORM_REF`
 - `values`: the parsed `VALUES` dict
+
+The tool's full name is harness-dependent: when the plugin is installed it is
+usually `mcp__plugin_north-carolina-criminal-law_nc-aoc-cr-forms__fill_nc_aoc_form`;
+in a dev checkout it may be `mcp__nc-aoc-cr-forms__fill_nc_aoc_form`. Use
+whichever is present. If neither is in your loaded tools and a `ToolSearch`
+tool exists, search for `fill_nc_aoc_form` to load the deferred schema first.
 
 **Step 2 — Build the output path:**
 
