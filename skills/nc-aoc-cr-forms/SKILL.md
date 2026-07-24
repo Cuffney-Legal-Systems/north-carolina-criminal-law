@@ -5,7 +5,7 @@ description: >
   AOC criminal court forms. Trigger phrases include: "fill out a form", "which form do I need",
   "AOC-CR-", "warrant", "indictment", "criminal form", "NC court form", "charge someone with",
   "file a motion", "expunction", "bail", "bond", "judgment", "sentencing".
-version: 26.07.23.01
+version: 26.07.23.02
 ---
 
 # NC AOC Criminal Form Filler
@@ -17,8 +17,21 @@ Form PDFs are fetched on demand from S3 by the hosted MCP server — no setup re
 ## If the fill tool is not connected — stop, do not improvise
 
 The `fill_nc_aoc_form` MCP tool (server `nc-aoc-cr-forms`) is the ONLY way this
-skill fills a form. Before starting Phase 0, check that the tool is available
-in this session. If it is not, STOP and tell the user:
+skill fills a form. Before starting Phase 0, confirm the tool is available —
+but note that in many harnesses MCP tools are **deferred**: the tool can be
+connected yet absent from your loaded tool list until you fetch its schema.
+So the check is:
+
+1. Look for a tool whose name contains `fill_nc_aoc_form` among your loaded
+   tools (the full name is often prefixed, e.g.
+   `mcp__plugin_north-carolina-criminal-law_nc-aoc-cr-forms__fill_nc_aoc_form`).
+2. If not loaded and a `ToolSearch` tool exists, search for `fill_nc_aoc_form`
+   (keyword query). ToolSearch waits for still-connecting servers, so this also
+   covers the server finishing its handshake after session start.
+3. Only if both steps come up empty is the server actually disconnected.
+
+Never report the tool as unavailable without doing step 2. If it is truly
+disconnected, STOP and tell the user:
 
 > The nc-aoc-cr-forms form-filling server isn't connected in this session.
 > Toggle the north-carolina-criminal-law plugin off and on (or restart the
