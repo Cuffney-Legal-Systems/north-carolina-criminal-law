@@ -1,7 +1,7 @@
 {
   "name": "north-carolina-criminal-law",
-  "version": "26.08.26.02",
-  "description": "North Carolina criminal law tools: fill AOC-CR court forms (320 forms, full process from arrest through post-conviction), look up NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions), read full statutory text for all ~1,100 sections of G.S. Chapter 14, and generate a prosecutorial summary (probable-cause screening) from a police report.",
+  "version": "26.08.26.03",
+  "description": "North Carolina criminal law tools: fill AOC-CR court forms (320 forms, full process from arrest through post-conviction), look up NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions), read full statutory text for all ~1,100 sections of G.S. Chapter 14, generate a prosecutorial summary (probable-cause screening) from a police report, and generate a defense case analysis (weaknesses in the State's case, defenses, and action items) for defense counsel.",
   "author": {
     "name": "Cuffney Legal Systems",
     "url": "https://github.com/Cuffney-Legal-Systems"

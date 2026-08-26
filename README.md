@@ -1,11 +1,12 @@
 # north-carolina-criminal-law — Claude Plugin
 
-A Claude plugin (**north-carolina-criminal-law**) bundling four skills for North Carolina criminal practice:
+A Claude plugin (**north-carolina-criminal-law**) bundling five skills for North Carolina criminal practice:
 
 - **nc-aoc-cr-forms** — identify, understand, and fill North Carolina AOC criminal court forms (AOC-CR series, 320 forms, full process from arrest through post-conviction)
 - **north-carolina-pattern-jury-instructions** — look up, explain, and check work against the NC Pattern Jury Instructions for Criminal Cases (N.C.P.I.—Crim., 1,100+ instructions pre-built and ready to use)
 - **north-carolina-general-statutes** — read, look up, and explain the full text of every section in G.S. Chapter 14 (Criminal Law), ~978 sections pre-built as markdown files with cross-references to pattern jury instructions
 - **prosecutors-analysis** — generate a prosecutorial summary (probable-cause screening) from a North Carolina police report or fact pattern: per-charge element tables with elements quoted from the pattern instructions, weaknesses, defenses, identification analysis, and a bottom-line recommendation, delivered as a `.docx` draft for prosecutor review
+- **defense-analysis** — generate a defense case analysis from the same kind of report or discovery, written for defense counsel: per-charge element tables rating the strength of the State's proof, a long **Weaknesses in the State's Case** section (witness credibility, sloppy police work, investigative gaps, suppression exposure, contradictions), affirmative and negating defenses, an identification attack, and immediate action items, delivered as a privileged `.docx` work-product draft
 
 ---
 
@@ -41,14 +42,24 @@ north-carolina-criminal-law/                 — repo root = the plugin
 │   │   ├── by_keyword.json     — Keyword → section numbers (1,700+ keywords)
 │   │   ├── index.md            — Full section table
 │   │   └── statutes/           — ~978 markdown files, one per section (GS-14-{N}.md)
-│   └── prosecutors-analysis/   — Prosecutorial summary (probable-cause screening)
+│   ├── prosecutors-analysis/   — Prosecutorial summary (probable-cause screening)
+│   │   ├── SKILL.md            — Claude skill definition
+│   │   ├── reference/
+│   │   │   ├── summary-template.md   — Six-section template + word budgets
+│   │   │   ├── example-output.md     — Worked two-charge summary at target length
+│   │   │   └── issue-checklists.md   — Cross-cutting + charge-specific checklists
+│   │   └── scripts/
+│   │       └── summary_to_docx.py    — Markdown draft → formatted .docx renderer
+│   └── defense-analysis/       — Defense case analysis (weaknesses + defenses)
 │       ├── SKILL.md            — Claude skill definition
 │       ├── reference/
-│       │   ├── summary-template.md   — Six-section template + word budgets
-│       │   ├── example-output.md     — Worked two-charge summary at target length
-│       │   └── issue-checklists.md   — Cross-cutting + charge-specific checklists
+│       │   ├── analysis-template.md    — Seven-section template + budgets
+│       │   ├── example-output.md       — Worked two-charge analysis, same fictional
+│       │   │                             case as the prosecutors-analysis example
+│       │   ├── weakness-checklists.md  — Cross-cutting + charge-specific sweeps
+│       │   └── defenses-catalog.md     — NC defenses → pattern instruction + burden
 │       └── scripts/
-│           └── summary_to_docx.py    — Markdown draft → formatted .docx renderer
+│           └── analysis_to_docx.py     — Markdown draft → formatted .docx renderer
 ├── CHANGELOG.md
 ├── .gitignore
 └── README.md
@@ -87,7 +98,7 @@ cd north-carolina-criminal-law
 # 2. Link each skill DIRECTORY into ~/.claude/skills/
 mkdir -p ~/.claude/skills
 for s in nc-aoc-cr-forms north-carolina-pattern-jury-instructions \
-         north-carolina-general-statutes prosecutors-analysis; do
+         north-carolina-general-statutes prosecutors-analysis defense-analysis; do
   ln -sfn "$(pwd)/skills/$s" ~/.claude/skills/"$s"
 done
 ```
@@ -103,12 +114,13 @@ cannot find its own data.
 > improvise a form and will tell you to reconnect the plugin — there is no
 > local fill path by design. Use Option A if you need form filling.
 
-The other three skills work fully offline once linked: jury instructions,
-statutes, and the prosecutorial summary all read from files that ship with the
-repo.
+The other four skills work fully offline once linked: jury instructions,
+statutes, the prosecutorial summary, and the defense analysis all read from
+files that ship with the repo.
 
-**Requirements:** Python 3.9+. `prosecutors-analysis` also needs `python-docx`
-(`pip install python-docx`) to render its `.docx` output.
+**Requirements:** Python 3.9+. `prosecutors-analysis` and `defense-analysis`
+also need `python-docx` (`pip install python-docx`) to render their `.docx`
+output.
 
 ### Keeping the plugin current
 
@@ -176,6 +188,28 @@ pip install python-docx
 ```
 
 **This skill drafts; it does not decide.** Under N.C. Rule of Professional Conduct 3.8 and ABA Criminal Justice Standard 3-4.3 the charging decision belongs to the prosecutor. Output is labeled a draft prepared with AI assistance for prosecutor review, states probable-cause sufficiency only, and traces every factual assertion to the source report.
+
+### defense-analysis
+
+The mirror of `prosecutors-analysis`. Claude activates automatically when you ask for a case assessment on behalf of a defendant:
+
+- "Run a defense analysis on this police report"
+- "What are the weaknesses in the State's case?"
+- "What defenses does my client have here?"
+- "How do I attack this case?"
+- "Is this triable, and what should I move on first?"
+
+Claude reads the report or discovery, **asks who you represent** when more than one person is charged or described, loads element language from the pattern jury instructions and statute text from Chapter 14, rates the strength of the State's proof element by element, sweeps the record for weaknesses, analyzes every defense the record reaches against its pattern instruction, and delivers a formatted `.docx` marked as privileged work product.
+
+Where `prosecutors-analysis` optimizes for brevity — a charging screen a prosecutor will actually finish — this one optimizes for completeness. A weakness left off the page is a weakness that never gets litigated, so the **Weaknesses in the State's Case** section runs as long as the record supports.
+
+**Requires `python-docx`** for the bundled `.docx` renderer:
+
+```bash
+pip install python-docx
+```
+
+**Work product, not a filing and not advice to a client.** The output is privileged, labeled on every page, and prepared for counsel's review. It identifies weaknesses in the State's evidence and defenses the record supports — it never constructs a version of events, never proposes testimony, and never predicts an outcome (N.C. RPC 3.1, 3.3, 3.4, 1.2(d)). Authority outside the shipped G.S. Chapter 14 and N.C.P.I. libraries — Chapter 15A procedure, Chapter 90, Chapter 20, and all case law — is flagged `(verify)` and must be confirmed before it reaches a filing.
 
 ---
 

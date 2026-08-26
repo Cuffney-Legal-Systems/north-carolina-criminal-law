@@ -5,6 +5,39 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.08.26.03] — 2026-08-26
+
+### Added
+
+- **`skills/defense-analysis`** — New skill, the defense-side mirror of `prosecutors-analysis`. Generates a **defense case analysis** from a North Carolina police report, discovery production, or fact pattern: a seven-section report (Summary → Charge Analysis → Weaknesses in the State's Case → Defenses → Identification → Bottom Line → Action Items) with per-charge element tables rating the State's proof **STRONG / CONTESTED / WEAK / NO PROOF** and pairing each element with a concrete defense attack. Element language is loaded from the sibling `north-carolina-pattern-jury-instructions` skill and statute text from `north-carolina-general-statutes` — never stated from memory. Defense-side; NC criminal only. Output is a privileged `.docx` work-product draft for defense counsel — never a filing, never advice to the client, and never a prediction of outcome.
+
+  Design differences from the prosecution skill, all deliberate:
+
+  - **Mandatory client identification.** The skill will not analyze until it knows whose lawyer the reader is. It resolves this from the request, then a matter folder, then a single named defendant — and otherwise **asks**, building one option per candidate from the record. Where names are redacted it describes candidates by their role in the allegation ("the alleged shooter (Doe 1)" / "the alleged driver (Doe 2)") so counsel can recognize their own client. Every element verdict, weakness, and defense is then scoped to that client, and the verification pass scans for places a codefendant's conduct or a collective noun ("the suspects," "they") has been silently attributed to them.
+  - **Multi-defendant handling.** Acting in concert (*N.C.P.I.—Crim. 202.10*) gets its own element block rather than being buried in the substantive table — in a joint case it is frequently the whole case. Codefendant statements raise flagged *Bruton* and severance issues, antagonistic defenses are named with what they cost, and an RPC 1.7 conflict is surfaced in the header flag.
+  - **Attribution as a drafting rule.** Every assertion is attributed to whose account it comes from — the report is the State's version, not the facts. Conclusory report language ("serious injury," "confessed," "consented," "resisted") is rendered as the report's characterization, with a note on what fact, if any, supports it.
+  - **Weaknesses is exempt from the length budget.** The prosecution skill caps its weaknesses at roughly six bullets because a charging screen that goes unread has failed. Here, under-inclusion is the failure that matters — a weakness left off the page is one that never gets litigated. The section is organized under labeled sub-headings and every bullet ends in a **Use:** (cross, suppress, dismiss, demand in discovery, retain an expert, request an instruction).
+  - **Section 7, Action Items** — discovery demands, motions with their timing hooks, preservation letters, and investigation tasks, grouped by urgency. New relative to the prosecution template.
+  - **Evidentiary and cautionary instructions as leverage** — *104.90*, *104.98*, *104.20*, *104.25*, *104.30*, *104.05*, *104.41*, *105.20*, *105.21*, *101.10*, *101.30*, *101.42* — mapped to the weaknesses that earn them, including the ones the State will request **against** the client (*104.35* flight, *104.40* recent possession, *105.21* conflicting statements).
+
+- **`skills/defense-analysis/reference/`** — `analysis-template.md` (seven-section structure, budgets, formatting), `example-output.md` (a worked two-charge analysis built on the *same fictional case* as the `prosecutors-analysis` example, so the two can be read side by side), `weakness-checklists.md` (cross-cutting sweeps for witness credibility, investigative gaps, forensics, identification, contradictions, suppression exposure, and charging defects, plus charge-specific checklists), and `defenses-catalog.md` (every Part III defense mapped to its instruction number, the facts that trigger it, and who carries the burden).
+
+- **`skills/defense-analysis/scripts/analysis_to_docx.py`** — Bundled renderer for the delivered `.docx`: five-column element tables and three-column bottom-line tables as real Word tables with repeating header rows, shaded best-issue call-outs, bordered header/notice blocks, numbered action-item lists, inline bold/italic/code runs, US Letter with 1" margins, and the **ATTORNEY WORK PRODUCT — PRIVILEGED** legend plus page numbers in the footer. Requires `python-docx`.
+
+### Changed
+
+- **`plugin.json`** — Description now covers the defense analysis alongside forms, jury instructions, statutes, and the prosecutorial summary. The plugin bundles five skills.
+
+- **`README.md`** — Documents `defense-analysis`: intro bullet, repository tree, manual-install symlink loop, `python-docx` requirement, and a usage section covering the client-identification step and the work-product boundary.
+
+### Notes
+
+- **Burden allocation is read from the loaded instruction, never from memory.** North Carolina splits these — self-defense (*308.45*), accident (*307.11*), and alibi (*301.10*) put nothing on the defendant, while duress (*310.10*), necessity (*310.12*), entrapment (*309.10*), and insanity (*304.10*) require proof to the jury's satisfaction. `defenses-catalog.md` records the split as a routing aid and states explicitly that the instruction's own mandate paragraph governs.
+
+- **Authority outside the shipped libraries is flagged, not asserted.** This plugin ships G.S. Chapter 14 and the N.C.P.I.—Crim. instructions. Chapter 15A procedure (discovery, suppression, severance, EIRA), Chapter 90, Chapter 20, the Rules of Evidence, and all case law are not shipped — every such cite in the skill and its references carries a `(verify)` flag, and the guardrails forbid stating a case holding from memory.
+
+---
+
 ## [26.08.26.02] — 2026-08-26
 
 ### Fixed
