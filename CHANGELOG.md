@@ -5,6 +5,22 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.08.26.01] — 2026-08-26
+
+### Added
+
+- **`skills/prosecutors-analysis`** — New skill. Generates a North Carolina **prosecutorial summary** (probable-cause screening) from a police report or fact pattern: a six-section report (Summary → Charge Analysis → Weaknesses → Defenses → Identification → Bottom Line) with per-charge element tables, proof carried as attributed verbatim quotes from the report, and a bottom-line charging recommendation. Element language is loaded from the sibling `north-carolina-pattern-jury-instructions` skill and statute text from `north-carolina-general-statutes` — never stated from memory. Implements the methodology and evaluator findings from *Ethically Implementing Generative Artificial Intelligence in Prosecution* (Cuffney, Northwestern University, 2025), including a mandatory verification pass (fact-tracing, chronology completeness, discrepancy sweep, element-language diff, charge-specific checklists, and a length/redundancy gate). Prosecution-side; NC criminal only. Output is a `.docx` draft for prosecutor review — never a charging decision (N.C. RPC 3.8, ABA Standard 3-4.3).
+
+- **`skills/prosecutors-analysis/scripts/summary_to_docx.py`** — Bundled renderer that converts the markdown working draft into the delivered `.docx`: real Word tables (with repeating header rows) for element and bottom-line tables, shaded case-critical call-outs, bordered header/notice blocks, inline bold/italic/code runs, US Letter with 1" margins and footer page numbers. Requires `python-docx`.
+
+- **`skills/prosecutors-analysis/reference/`** — `summary-template.md` (section structure and word budgets), `example-output.md` (worked two-charge summary at target length), and `issue-checklists.md` (cross-cutting and charge-specific checklists distilled from the thesis's ten CMPD case studies).
+
+### Changed
+
+- **`plugin.json`** — Description now covers the prosecutorial summary alongside forms, jury instructions, and statutes. The plugin bundles four skills.
+
+---
+
 ## [26.07.23.04] — 2026-07-23
 
 ### Changed
