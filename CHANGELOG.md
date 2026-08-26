@@ -5,6 +5,20 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.08.26.02] — 2026-08-26
+
+### Fixed
+
+- **`README.md` — manual install was broken as documented.** Option B told users to symlink each skill's `SKILL.md` alone into `~/.claude/skills/<name>.md`. Every skill in this plugin reads sibling files next to its `SKILL.md` (`catalog.json`, `reference/`, `statutes/`, `scripts/`), so that install produced skills that could not find their own data. Option B now links the whole skill **directory** (`ln -sfn .../skills/<name> ~/.claude/skills/<name>`), and says why.
+
+- **`README.md` — manual install silently lost form filling.** The MCP server is declared in `plugin.json` and registered only by the plugin manager, so a manual install leaves `nc-aoc-cr-forms` unable to fill anything. Option A is now marked the supported install, and Option B carries an explicit call-out that form filling requires it. Documented the `python-docx` prerequisite for `prosecutors-analysis` in the same section.
+
+- **`README.md` — removed the "Command-line usage" section.** It documented `python3 skills/nc-aoc-cr-forms/fill_form.py …`, a script that stopped shipping in v26.07.23.01 (moved to gitignored `dev/local-fill/`) and a local fill path the skill's own guardrails have forbidden since v26.07.23.04. The still-accurate checkbox value list moved to the MCP server section, alongside a statement that `fill_nc_aoc_form` is the only supported fill path.
+
+- **`README.md` — repository tree corrected.** Dropped `skills/nc-aoc-cr-forms/pdfs/` (blank PDFs have not been downloaded to the client since the fill moved to Lambda) and the stale `.claude-plugin/marketplace.json` entry (removed in ac01e90); added `CHANGELOG.md` and `.gitignore`, and a note on where the gitignored `dev/` tooling lives.
+
+---
+
 ## [26.08.26.01] — 2026-08-26
 
 ### Added

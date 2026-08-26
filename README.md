@@ -14,7 +14,7 @@ A Claude plugin (**north-carolina-criminal-law**) bundling four skills for North
 ```
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.08.26.01)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.08.26.02)
 ├── agents/
 │   ├── case-file-harvester.md  — Scans case folder, returns structured JSON of case facts
 │   ├── offense-elements-analyzer.md — Element-by-element charge analysis (spawned in parallel)
@@ -23,8 +23,7 @@ north-carolina-criminal-law/                 — repo root = the plugin
 │   ├── nc-aoc-cr-forms/        — AOC-CR form filler
 │   │   ├── SKILL.md            — Claude skill definition
 │   │   ├── fields_index.json   — AcroForm field definitions for all 320 forms (~9 MB)
-│   │   ├── reference.md        — Form disambiguation map
-│   │   └── pdfs/               — Downloaded PDFs (gitignored, populated on demand)
+│   │   └── reference.md        — Form disambiguation map
 │   ├── north-carolina-pattern-jury-instructions/  — NC Pattern Jury Instructions
 │   │   ├── SKILL.md            — Claude skill definition
 │   │   ├── catalog.json        — All instructions: number, title, statutes, status
@@ -51,8 +50,15 @@ north-carolina-criminal-law/                 — repo root = the plugin
 │       └── scripts/
 │           └── summary_to_docx.py    — Markdown draft → formatted .docx renderer
 ├── CHANGELOG.md
+├── .gitignore
 └── README.md
 ```
+
+Blank form PDFs are **not** stored in the repo or downloaded to the client — the
+hosted MCP server fetches them from S3 on each fill. Developer tooling (the
+Lambda source, the maintenance scripts, and a local fill script used only for
+testing) lives in a gitignored `dev/` directory and is not part of the
+distributed plugin.
 
 ---
 
@@ -68,32 +74,47 @@ https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law
 
 The plugin manager installs all four skills automatically. No setup script needed.
 
-### Option B — Manual install (Claude Code CLI)
+**Option A is the supported install.** It is the only one that registers the MCP
+server, which `nc-aoc-cr-forms` requires — see the caveat under Option B.
 
-**Requirements:** Python 3.9+
+### Option B — Manual install (development / offline use)
 
 ```bash
 # 1. Clone
 git clone https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law.git
 cd north-carolina-criminal-law
 
-# 2. Register all four skills with Claude Code
-ln -sf "$(pwd)/skills/nc-aoc-cr-forms/SKILL.md" ~/.claude/skills/nc-aoc-cr-forms.md
-ln -sf "$(pwd)/skills/north-carolina-pattern-jury-instructions/SKILL.md" \
-    ~/.claude/skills/north-carolina-pattern-jury-instructions.md
-ln -sf "$(pwd)/skills/north-carolina-general-statutes/SKILL.md" \
-    ~/.claude/skills/north-carolina-general-statutes.md
-ln -sf "$(pwd)/skills/prosecutors-analysis/SKILL.md" \
-    ~/.claude/skills/prosecutors-analysis.md
+# 2. Link each skill DIRECTORY into ~/.claude/skills/
+mkdir -p ~/.claude/skills
+for s in nc-aoc-cr-forms north-carolina-pattern-jury-instructions \
+         north-carolina-general-statutes prosecutors-analysis; do
+  ln -sfn "$(pwd)/skills/$s" ~/.claude/skills/"$s"
+done
 ```
 
-No local PDF or Python dependencies needed for form filling — the fill operation runs in the hosted Lambda backend (see [MCP server](#mcp-server) below).
+Link the whole skill directory, not just `SKILL.md`. Every skill here reads
+sibling files next to its `SKILL.md` — `catalog.json`, `reference/`,
+`statutes/`, `scripts/` — so a lone `SKILL.md` symlink installs a skill that
+cannot find its own data.
+
+> **A manual install cannot fill forms.** The `fill_nc_aoc_form` MCP server is
+> declared in `.claude-plugin/plugin.json` and is registered only by the plugin
+> manager. Installed this way, `nc-aoc-cr-forms` will correctly refuse to
+> improvise a form and will tell you to reconnect the plugin — there is no
+> local fill path by design. Use Option A if you need form filling.
+
+The other three skills work fully offline once linked: jury instructions,
+statutes, and the prosecutorial summary all read from files that ship with the
+repo.
+
+**Requirements:** Python 3.9+. `prosecutors-analysis` also needs `python-docx`
+(`pip install python-docx`) to render its `.docx` output.
 
 ### Keeping the plugin current
 
 ```bash
 git pull
-# No further steps needed — the symlinks always point to the latest SKILL.md
+# Nothing else to do — the directory symlinks always point at the latest files.
 ```
 
 ---
@@ -166,18 +187,9 @@ The hosted Lambda URL is configured in `.claude-plugin/plugin.json` and is used 
 
 **Infrastructure:** Python 3.13, 512 MB, 60 s timeout, Function URL with `RESPONSE_STREAM`, CORS locked to `https://claude.ai`, `s3:GetObject` on the forms prefix only.
 
----
+**Field values.** Text fields take strings. Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"`; anything else reads as unchecked.
 
-## Command-line usage
-
-```bash
-# Fill a form — pass values as JSON string or file
-python3 skills/nc-aoc-cr-forms/fill_form.py AOC-CR-314 \
-  '{"CountyName": "Wake", "DefendantName": "Jane Doe"}' \
-  output_filled.pdf
-```
-
-Checkbox fields accept `true`, `"Yes"`, `"yes"`, `"x"`, `"1"`, or `"on"`.
+**There is no command-line or local fill path.** `fill_nc_aoc_form` is the only supported way to fill a form. If the tool is unavailable the skill stops and says so rather than downloading a blank PDF and filling it by hand — a hand-built court form that looks official but was never validated against the AcroForm field map is worse than no form at all.
 
 ---
 
