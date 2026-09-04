@@ -5,6 +5,24 @@ Versions follow `YY.MM.DD.patch` date-based format.
 
 ---
 
+## [26.08.26.04] — 2026-09-04
+
+### Fixed
+
+- **Updates never reached installed copies.** Claude Code enables background auto-update for Anthropic's own marketplaces, but third-party marketplaces — including `cuffney-legal-systems` — ship with auto-update **off** by default. An installed copy of this plugin therefore stayed pinned at whatever version it was installed at: `defense-analysis` shipped in `26.08.26.03` on 2026-08-26 and never appeared on machines that had the plugin from an earlier release. Nothing in this repo or the catalog could change that default; it is a per-machine toggle. Documented in `README.md` → **Updating**, with the one-time toggle, the two-command manual pull, and a managed-settings block that turns auto-update on firm-wide.
+
+  The version scheme was verified as **not** the cause: a plugin using this repo's `YY.MM.DD.patch` format was installed at `26.08.26.01` and updated cleanly to `26.08.26.03`, delivering a newly added skill. No renumbering is needed and `plugin.json` is unchanged.
+
+### Changed
+
+- **`README.md`** — New **Updating** section covering both install paths: the auto-update toggle and manual `claude plugin marketplace update` / `claude plugin update` for Option A, and a note that `git pull` does not link a skill added in a later release for Option B. Corrected the manifest version reference (`26.08.26.02` → current) and the "installs all four skills" count, both stale since `defense-analysis` shipped.
+
+### Notes
+
+- **`version` in `SKILL.md` frontmatter is inert.** It is not a supported skill frontmatter field — a skill's version is its plugin's version. The per-skill values in this repo have drifted (`defense-analysis` reads `26.08.26.01` while the plugin is well past it) and are left in place for now; `claude plugin list` and `plugin.json` are the authoritative version.
+
+---
+
 ## [26.08.26.03] — 2026-08-26
 
 ### Added

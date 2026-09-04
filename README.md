@@ -15,7 +15,7 @@ A Claude plugin (**north-carolina-criminal-law**) bundling five skills for North
 ```
 north-carolina-criminal-law/                 — repo root = the plugin
 ├── .claude-plugin/
-│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.08.26.02)
+│   └── plugin.json             — Plugin manifest (name: north-carolina-criminal-law, v26.08.26.04)
 ├── agents/
 │   ├── case-file-harvester.md  — Scans case folder, returns structured JSON of case facts
 │   ├── offense-elements-analyzer.md — Element-by-element charge analysis (spawned in parallel)
@@ -83,7 +83,7 @@ Install directly from GitHub in Claude Code:
 https://github.com/Cuffney-Legal-Systems/north-carolina-criminal-law
 ```
 
-The plugin manager installs all four skills automatically. No setup script needed.
+The plugin manager installs all five skills automatically. No setup script needed.
 
 **Option A is the supported install.** It is the only one that registers the MCP
 server, which `nc-aoc-cr-forms` requires — see the caveat under Option B.
@@ -122,12 +122,75 @@ files that ship with the repo.
 also need `python-docx` (`pip install python-docx`) to render their `.docx`
 output.
 
-### Keeping the plugin current
+---
+
+## Updating
+
+### Option A — plugin install
+
+**Turn on auto-update once.** Claude Code enables background auto-update for
+Anthropic's own marketplaces, but **third-party marketplaces ship with it turned
+off**, and `cuffney-legal-systems` is a third-party marketplace. Until it is
+enabled, an installed copy of this plugin never advances — new skills and fixes
+stay on `main` and never reach the machine.
+
+In the Claude desktop app, open the plugin browser; in the Claude Code CLI, run
+`/plugin`. Then:
+
+> **Marketplaces** → `cuffney-legal-systems` → **Enable auto-update**
+
+That is a one-time step per machine. Afterward Claude Code refreshes the
+marketplace and updates this plugin in the background shortly after each session
+starts, and prompts you to run `/reload-plugins` when a new version has landed.
+
+**To pull an update immediately**, or if you would rather not enable
+auto-update, run both commands — the first refreshes the catalog, the second
+installs the new version:
+
+```bash
+claude plugin marketplace update cuffney-legal-systems
+claude plugin update north-carolina-criminal-law@cuffney-legal-systems
+```
+
+Then `/reload-plugins` in an open session, or just start a new one.
+
+Confirm which version you are on at any time:
+
+```bash
+claude plugin list
+```
+
+The `Version:` line reports this plugin's `YY.MM.DD.patch` release — compare it
+against the newest heading in [CHANGELOG.md](CHANGELOG.md).
+
+**Firm-wide deployments.** An administrator can enable auto-update for everyone
+at once, so no attorney has to touch the toggle, by declaring the marketplace in
+[managed settings](https://code.claude.com/docs/en/managed-settings):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "cuffney-legal-systems": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/Cuffney-Legal-Systems/cuffney-legal-systems.git"
+      },
+      "autoUpdate": true
+    }
+  }
+}
+```
+
+### Option B — manual install
 
 ```bash
 git pull
 # Nothing else to do — the directory symlinks always point at the latest files.
 ```
+
+A `git pull` picks up new files inside skills that are already linked, but it
+does **not** link a skill added in a later release. After an update that adds a
+skill, re-run the symlink loop from Option B above.
 
 ---
 
